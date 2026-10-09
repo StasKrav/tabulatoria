@@ -77,6 +77,11 @@
   button:disabled:hover { background: var(--panel-2); color: var(--text); border-color: var(--border); }
 
   button.icon { padding: 7px 10px; font-size: 14px; }
+  button svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
 
   .toolbar {
     background: var(--panel);
@@ -543,6 +548,9 @@
   <button onclick="exportPlainText()">Чистый текст</button>
   <button onclick="copyToClipboard()">Копировать</button>
   <button class="danger" onclick="clearAll()">Очистить</button>
+  <button id="btnSave" class="primary" onclick="saveCurrentSong()" disabled title="Сохранить в файл (Ctrl+S)">
+    Сохранить
+  </button>
   <button onclick="loadExample()">Пример</button>
   <input type="file" id="fileInput" hidden accept=".txt,.md">
 </header>
@@ -963,16 +971,42 @@ async function openSong(song) {
   }
   try {
     const file = await song.handle.getFile();
-    const text = await file.text();
-    editor.value = text;
+    const fileText = await file.text();
+    const draftText = loadDraft(song.name);
+
+    let textToUse = fileText;
+    let restoredFromDraft = false;
+
+    // Если есть черновик, отличающийся от файла — спрашиваем
+    if (draftText !== null && draftText !== fileText) {
+      const useDraft = confirm(
+        'Для этой песни есть несохранённый черновик.\n\n' +
+        'OK — восстановить черновик (файл на диске останется как есть)\n' +
+        'Отмена — открыть версию из файла (черновик будет удалён)'
+      );
+      if (useDraft) {
+        textToUse = draftText;
+        restoredFromDraft = true;
+      } else {
+        clearDraft(song.name);
+      }
+    }
+
+    editor.value = textToUse;
     currentFileHandle = song.handle;
     currentFileName = song.name;
-    isDirty = false;
+    isDirty = restoredFromDraft;   // если восстановили черновик — есть несохранёнка
+
     updateSavedIndicator();
     updateEditorTitle();
     refresh();
     closeModal('songListModal');
-    showToast('Открыто: ' + song.name.replace(/\.txt$/i, ''));
+
+    if (restoredFromDraft) {
+      showToast('Черновик восстановлен: ' + song.name.replace(/\.txt$/i, ''));
+    } else {
+      showToast('Открыто: ' + song.name.replace(/\.txt$/i, ''));
+    }
   } catch (e) {
     console.error(e);
     showToast('Не удалось открыть файл: ' + e.message, true);
@@ -986,7 +1020,9 @@ async function saveCurrentSong() {
     await writable.write(editor.value);
     await writable.close();
     isDirty = false;
+    clearDraft(currentFileName);   // ← черновик больше не нужен
     updateSavedIndicator();
+    updateEditorTitle();
     showToast('Сохранено: ' + currentFileName.replace(/\.txt$/i, ''));
     return true;
   } catch (e) {
@@ -997,13 +1033,23 @@ async function saveCurrentSong() {
 }
 
 function updateSavedIndicator() {
+  const btnSave = document.getElementById('btnSave');
+
   if (!currentFileHandle) {
+    // Файл не открыт — кнопка не нужна
     savedDot.classList.remove('visible');
+    btnSave.disabled = true;
+    btnSave.textContent = 'Сохранить';
     return;
   }
+
   savedDot.classList.add('visible');
   savedDot.classList.toggle('dirty', isDirty);
   savedDot.title = isDirty ? 'Не сохранено' : 'Сохранено';
+
+  // Кнопка активна только если есть несохранённые изменения
+  btnSave.disabled = !isDirty;
+  btnSave.textContent = isDirty ? 'Сохранить ●' : 'Сохранить';
 }
 
 function updateEditorTitle() {
@@ -1070,8 +1116,8 @@ async function renameSong(song) {
   const newFile = safe.toLowerCase().endsWith('.txt') ? safe : safe + '.txt';
 
   try {
-    // В File System Access API нет прямого переименования.
-    // Читаем старый, пишем новый, удаляем старый.
+    // File System Access API не умеет rename — копируем содержимое,
+    // удаляем старый файл.
     const oldFile = await song.handle.getFile();
     const text = await oldFile.text();
 
@@ -1082,10 +1128,19 @@ async function renameSong(song) {
 
     await dirHandle.removeEntry(song.name);
 
+    // Если переименовывали текущий открытый файл — обновляем состояние
     if (currentFileName === song.name) {
       currentFileName = newFile;
       currentFileHandle = newHandle;
       updateEditorTitle();
+      updateSavedIndicator();
+    }
+
+    // Переносим черновик: старый под старым именем удаляем,
+    // новый создаём под новым именем ТОЛЬКО если есть несохранёнка.
+    clearDraft(song.name);
+    if (currentFileName === newFile && isDirty) {
+      saveDraft();
     }
 
     await refreshSongList();
@@ -1110,6 +1165,7 @@ async function deleteSong(song) {
     }
     await refreshSongList();
     renderSongListModal();
+    clearDraft(song.name);
     showToast('Удалено: ' + name);
   } catch (e) {
     console.error(e);
@@ -1440,6 +1496,7 @@ editor.addEventListener('input', () => {
     updateEditorTitle();
   }
   refresh();
+  saveDraft();   // ← добавили: пишем черновик на каждый ввод
 });
 editor.addEventListener('click', updateStats);
 editor.addEventListener('keyup', updateStats);
@@ -1488,6 +1545,34 @@ chordsInput.addEventListener('keydown', e => {
     applyChords();
   }
 });
+
+// ============================================================
+// ЧЕРНОВИКИ: сохраняем несохранённый текст по имени файла
+// ============================================================
+
+const DRAFT_PREFIX = 'draft:';   // ключ: draft:<имя файла>
+
+function saveDraft() {
+  // Сохраняем черновик только если файл открыт И есть изменения
+  if (!currentFileHandle || !currentFileName || !isDirty) return;
+  try {
+    localStorage.setItem(DRAFT_PREFIX + currentFileName, editor.value);
+  } catch (e) {
+    // Тихо игнорируем — черновик это «бонус», не критично
+  }
+}
+
+function loadDraft(fileName) {
+  try {
+    return localStorage.getItem(DRAFT_PREFIX + fileName);
+  } catch { return null; }
+}
+
+function clearDraft(fileName) {
+  try {
+    localStorage.removeItem(DRAFT_PREFIX + fileName);
+  } catch {}
+}
 
 // ============================================================
 // ХЕЛП
