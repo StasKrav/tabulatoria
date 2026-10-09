@@ -1,0 +1,700 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #14161c;
+  --panel: #1c1f28;
+  --panel-2: #252932;
+  --border: #313640;
+  --text: #e6e8ee;
+  --accent: #7aa2f7;
+  --accent-2: #9ece6a;
+  --chord: #f7768e;
+  --danger: #f7768e;
+  --muted: #8b91a0;
+  --placeholder: #3a4050;
+  --warn: #e0af68;
+}
+
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+h1 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h1 .saved-dot {
+  color: var(--accent-2);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+h1 .saved-dot.visible {
+  opacity: 1;
+}
+h1 .saved-dot.dirty {
+  color: var(--danger);
+}
+h1 .saved-dot.external {
+  color: var(--warn);
+}
+
+button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+button:hover {
+  background: var(--accent);
+  color: #14161c;
+  border-color: var(--accent);
+}
+button.primary {
+  background: var(--accent);
+  color: #14161c;
+  font-weight: 600;
+}
+button.danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button:disabled:hover {
+  background: var(--panel-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+button.icon {
+  padding: 7px 10px;
+  font-size: 14px;
+}
+button svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.toolbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.toolbar label {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.section-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--accent-2);
+  font-weight: 600;
+}
+.section-btn:hover {
+  background: var(--accent-2);
+  color: #14161c;
+  border-color: var(--accent-2);
+}
+
+.folder-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto; /* ← прижимает группу к правому краю */
+  flex-wrap: wrap;
+}
+
+.folder-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 5px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-status.active {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* -------- Панель аккордов -------- */
+.chords-bar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chords-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chords-input-row label {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#chordsInput {
+  flex: 1;
+  min-width: 200px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none;
+}
+#chordsInput:focus {
+  border-color: var(--accent);
+}
+
+#chordsInput::placeholder {
+  color: var(--muted);
+  font-family: inherit;
+}
+
+.chords-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+
+.chords-buttons:empty::before {
+  content: 'Кнопки аккордов появятся здесь после того, как ты введёшь их список выше и нажмёшь ✔';
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  align-self: center;
+}
+
+.chord-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.12s;
+}
+
+.chord-btn:hover {
+  background: var(--chord);
+  color: #14161c;
+  border-color: var(--chord);
+}
+
+.chord-btn .key {
+  background: var(--bg);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.chord-btn:hover .key {
+  background: #14161c;
+  color: #f7c4cf;
+}
+
+/* -------- Основной контент -------- */
+main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--border);
+}
+
+.pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.pane-header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pane-header b {
+  color: var(--accent-2);
+  font-weight: 600;
+}
+
+#editor {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+#editor::placeholder,
+#chordsInput::placeholder,
+.new-song-input::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+.preview-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.preview-wrap pre {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  color: var(--text);
+}
+
+.preview-wrap .chord-line {
+  color: var(--chord);
+  font-weight: bold;
+}
+.preview-wrap .text-line {
+  color: var(--text);
+}
+
+.preview-wrap .section-header {
+  color: var(--accent-2);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-top: 0.4em;
+}
+
+.preview-wrap .empty-line {
+  height: 0.9em;
+  display: block;
+}
+
+.status {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.status b {
+  color: var(--accent-2);
+}
+
+.toast {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--accent-2);
+  color: #14161c;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.toast.error {
+  background: var(--danger);
+  color: white;
+}
+
+/* -------- Модалки -------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.modal-backdrop.show {
+  display: flex;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal.wide {
+  max-width: 900px;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-header h2 {
+  font-size: 16px;
+  color: var(--accent);
+  font-weight: 600;
+  flex: 1;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+.modal-close:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.modal-body h3 {
+  color: var(--accent-2);
+  font-size: 14px;
+  margin: 18px 0 8px 0;
+  font-weight: 600;
+}
+.modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.modal-body p {
+  margin-bottom: 10px;
+}
+
+.modal-body code {
+  background: var(--panel-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.modal-body kbd {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.modal-body pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  margin: 8px 0;
+  color: var(--accent-2);
+  line-height: 1.5;
+}
+
+.modal-body ul {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+.modal-body li {
+  margin-bottom: 4px;
+}
+
+/* -------- Список песен -------- */
+.songs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.song-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-size: 14px;
+}
+
+.song-item:hover {
+  background: var(--panel);
+  border-color: var(--accent);
+}
+
+.song-item.current {
+  border-color: var(--accent-2);
+  background: var(--panel);
+}
+
+.song-item .song-icon {
+  color: var(--chord);
+}
+.song-item .song-name {
+  flex: 1;
+}
+.song-item .song-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.song-item:hover .song-actions {
+  opacity: 1;
+}
+.song-item .song-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.songs-empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 30px 10px;
+  font-style: italic;
+}
+
+.folder-info {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+}
+
+/* -------- Уведомление про браузер -------- */
+.api-warning {
+  background: var(--panel-2);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.api-warning b {
+  color: var(--danger);
+}
+
+.new-song-input {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  width: 100%;
+  outline: none;
+}
+.new-song-input:focus {
+  border-color: var(--accent);
+}
+
+@media (max-width: 780px) {
+  main {
+    flex-direction: column;
+  }
+  .folder-toolbar {
+    justify-content: center;
+  }
+}
+@media (max-width: 1100px) {
+  .folder-group {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* -------- Меню гамбургера -------- */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: none;
+}
+.menu-backdrop.show { display: block; }
+
+.menu {
+  position: fixed;
+  top: 56px;              /* под шапкой */
+  right: 16px;
+  min-width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 251;
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+}
+.menu.show { display: flex; }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.menu-item:hover { background: var(--panel-2); }
+
+.menu-item .menu-hotkey {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.menu-item.menu-danger { color: var(--danger); }
+.menu-item.menu-danger:hover { background: var(--danger); color: white; }
+.menu-item.menu-danger:hover .menu-hotkey { color: rgba(255,255,255,0.7); }
+
+.menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.menu-item:disabled:hover { background: transparent; }
