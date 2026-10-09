@@ -137,4 +137,13 @@
     flex: 1;
     min-height: 0;
   }
+
+
+  /* -------- Полноэкранное превью на мобильном -------- */
+  .fs-preview-wrap {
+    padding: 16px 18px;
+  }
+  .fs-preview-hint {
+    display: none;
+  }
 }

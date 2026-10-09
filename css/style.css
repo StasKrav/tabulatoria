@@ -753,3 +753,121 @@ main {
 .chord-bar-mobile {
   display: none;
 }
+
+/* -------- Полноэкранное превью -------- */
+.fs-preview {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 400;
+  display: none;
+  flex-direction: column;
+}
+.fs-preview.show {
+  display: flex;
+}
+
+.fs-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.fs-preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-preview-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.fs-preview-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 32px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fs-preview-wrap pre {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: var(--fs-size, 22px);
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--text);
+  margin: 0 auto;
+  max-width: max-content;
+}
+
+.fs-preview-wrap .chord-line {
+  color: var(--chord);
+  font-weight: bold;
+}
+.fs-preview-wrap .text-line {
+  color: var(--text);
+}
+.fs-preview-wrap .section-header {
+  color: var(--accent-2);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-top: 0.4em;
+}
+.fs-preview-wrap .empty-line {
+  height: 0.9em;
+  display: block;
+}
+
+.fs-transpose-ind {
+  color: var(--accent-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 28px;
+  text-align: center;
+  padding: 4px 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.fs-transpose-ind.zero {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+#fsScrollSpeed {
+  width: 100px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.fs-scroll-speed {
+  color: var(--accent-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 28px;
+  text-align: center;
+}
+
+#fsScrollBtn.playing {
+  background: var(--accent-2);
+  color: #14161c;
+  border-color: var(--accent-2);
+}
+
+/* на мобильном ползунок можно растянуть чуть шире */
+@media (max-width: 780px) {
+  #fsScrollSpeed {
+    width: 70px;
+  }
+}

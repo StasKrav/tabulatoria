@@ -1354,4 +1354,405 @@ function toggleChordsInput() {
   else collapseChordsInput();
 }
 
+// ============================================================
+// ПОЛНОЭКРАННОЕ ПРЕВЬЮ
+// ============================================================
+let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '22', 10)
+let wakeLock = null
 
+function openFullscreenPreview() {
+  const overlay = document.getElementById('fsPreview')
+
+  // Рендерим содержимое с учётом транспонирования
+  renderFsPreviewContent()
+  updateTransposeIndicator()
+
+  // Синхронизируем UI автоскролла со сохранённой скоростью
+  const input = document.getElementById('fsScrollSpeed')
+  if (input) input.value = String(autoScrollSpeed)
+  updateScrollSpeedLabel()
+
+  overlay.classList.add('show')
+  overlay.setAttribute('aria-hidden', 'false')
+
+  applyFsFontSize()
+}
+
+function closeFullscreenPreview() {
+  const overlay = document.getElementById('fsPreview')
+  overlay.classList.remove('show')
+  overlay.setAttribute('aria-hidden', 'true')
+
+  // Сбрасываем транспонирование — в следующий раз открываем оригинал
+  transposeAmount = 0
+  updateTransposeIndicator()
+
+  // Останавливаем автоскролл
+  stopAutoScroll(true)
+
+  // Отпускаем wake lock, если был
+  if (wakeLock) {
+    wakeLock.release().catch(() => {})
+    wakeLock = null
+    updateWakeLockBtn()
+  }
+}
+
+function applyFsFontSize() {
+  document.getElementById('fsPreview').style.setProperty('--fs-size', fsFontSize + 'px')
+  safeSetItem('fsFontSize', String(fsFontSize))
+}
+
+function fsFontBigger() {
+  fsFontSize = Math.min(64, fsFontSize + 2)
+  applyFsFontSize()
+}
+function fsFontSmaller() {
+  fsFontSize = Math.max(12, fsFontSize - 2)
+  applyFsFontSize()
+}
+
+// Wake Lock — чтобы экран не гас во время репетиции
+async function toggleWakeLock() {
+  if (!('wakeLock' in navigator)) {
+    showToast('Браузер не поддерживает блокировку экрана', true)
+    return
+  }
+  try {
+    if (wakeLock) {
+      await wakeLock.release()
+      wakeLock = null
+      showToast('Экран снова может гаснуть')
+    } else {
+      wakeLock = await navigator.wakeLock.request('screen')
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null
+        updateWakeLockBtn()
+      })
+      showToast('Экран не будет гаснуть')
+    }
+    updateWakeLockBtn()
+  } catch (e) {
+    console.error(e)
+    showToast('Не удалось удержать экран: ' + e.message, true)
+  }
+}
+
+function updateWakeLockBtn() {
+  const btn = document.getElementById('fsAwakeBtn')
+  if (!btn) return
+  btn.classList.toggle('primary', !!wakeLock)
+  btn.title = wakeLock ? 'Экран не гаснет (нажми, чтобы отпустить)' : 'Не гасить экран'
+}
+
+// Клавиатура внутри полноэкранного режима
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('fsPreview')
+  if (!overlay || !overlay.classList.contains('show')) return
+
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeFullscreenPreview()
+    return
+  }
+  if (e.key === '+' || e.key === '=') {
+    e.preventDefault()
+    fsFontBigger()
+    return
+  }
+  if (e.key === '-' || e.key === '_') {
+    e.preventDefault()
+    fsFontSmaller()
+    return
+  }
+    // Пробел — старт/стоп автоскролла
+  if (e.code === 'Space') {
+    e.preventDefault()
+    toggleAutoScroll()
+    return
+  }
+
+  // Home — в начало текста (и пауза автоскролла)
+  if (e.code === 'Home') {
+    e.preventDefault()
+    pauseAutoScrollTemporarily()
+    const wrap = getFsWrap()
+    if (wrap) wrap.scrollTop = 0
+    return
+  }
+
+  // PageUp/PageDown — на страницу, с паузой
+  if (e.code === 'PageDown' || e.code === 'PageUp') {
+    pauseAutoScrollTemporarily()
+    return  // не preventDefault — пусть браузер сам прокрутит
+  }
+  // Стрелки — транспонирование (◀ ▶ — на полтона, ▲ ▼ — на октаву)
+  if (e.key === 'ArrowRight') {
+    e.preventDefault()
+    transposeAll(1)
+    return
+  }
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault()
+    transposeAll(-1)
+    return
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    transposeAll(12)
+    return
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    transposeAll(-12)
+    return
+  }
+  if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    transposeReset()
+    return
+  }
+})
+
+// ============================================================
+// ТРАНСПОНИРОВАНИЕ (только в полноэкранном превью)
+// ============================================================
+const NOTE_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+const NOTE_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+
+// Соответствие букв и альтераций
+const NOTE_INDEX = {
+  'C': 0, 'B#': 0,
+  'C#': 1, 'Db': 1,
+  'D': 2,
+  'D#': 3, 'Eb': 3,
+  'E': 4, 'Fb': 4,
+  'F': 5, 'E#': 5,
+  'F#': 6, 'Gb': 6,
+  'G': 7,
+  'G#': 8, 'Ab': 8,
+  'A': 9,
+  'A#': 10, 'Bb': 10,
+  'B': 11, 'Cb': 11,
+}
+
+// Транспонирует один аккорд на N полутонов.
+// Работает только с корнем (до первого символа, не входящего
+// в [A-G#b] или "/"). Всё остальное (m7, sus4, /G) переносится как есть.
+function transposeChord(chord, semitones) {
+  if (!semitones) return chord
+
+  // Пытаемся отделить корень. Примеры: "Am7", "F#m7b5", "Bb", "C/G", "N.C."
+  // Шаблон: буква A-G, затем опционально # или b
+  const m = /^([A-G])([#b]?)(.*)$/.exec(chord)
+  if (!m) return chord
+
+  const letter = m[1]
+  const accidental = m[2] || ''
+  const rest = m[3] || ''
+
+  const rootName = letter + accidental
+  const idx = NOTE_INDEX[rootName]
+  if (idx === undefined) return chord
+
+  let newIdx = (idx + semitones) % 12
+  if (newIdx < 0) newIdx += 12
+
+  // Выбираем, какую нотацию использовать: если исходный корень был с "b",
+  // остаёмся в бемолях; иначе — в диезах. C и F (без знаков) тоже логично
+  // показывать с бемолями при понижении, но для простоты оставим диезы.
+  const useFlats = accidental === 'b'
+  const newRoot = useFlats ? NOTE_FLAT[newIdx] : NOTE_SHARP[newIdx]
+
+  return newRoot + rest
+}
+
+// Текущая величина транспонирования
+let transposeAmount = 0
+
+// Транспонировать весь HTML превью в оверлее
+function applyTransposeToPreview() {
+  const wrap = document.getElementById('fsPreviewContent')
+  if (!wrap) return
+
+  // Перерендерим оверлей из свежего preview.innerHTML
+  // (чтобы не накапливать транспонирование поверх транспонирования)
+  renderFsPreviewContent()
+}
+
+// Отрисовка контента оверлея с учётом текущего транспонирования
+function renderFsPreviewContent() {
+  const wrap = document.getElementById('fsPreviewContent')
+  if (!wrap) return
+
+  // Берём сырой текст из редактора и рендерим вручную,
+  // чтобы применить транспонирование к аккордам.
+  const text = editor.value
+  const lines = text.split('\n')
+  let html = ''
+  for (const raw of lines) {
+    if (raw.trim() === '') {
+      html += '<span class="empty-line">\n</span>'
+      continue
+    }
+    if (SECTION_HEADER_RE.test(raw)) {
+      html += `<span class="section-header">${escapeHtml(raw)}</span>\n`
+      continue
+    }
+    // Транспонируем аккорды ДО рендера строки
+    const transposed = raw.replace(/\[([^\]]+)\]/g, (_, chord) => {
+      return '[' + transposeChord(chord, transposeAmount) + ']'
+    })
+    const { chordLine, textLine } = renderLine(transposed)
+    if (chordLine.trim()) html += `<span class="chord-line">${escapeHtml(chordLine)}</span>\n`
+    if (textLine.trim()) html += `<span class="text-line">${escapeHtml(textLine)}</span>\n`
+  }
+  wrap.innerHTML = html
+}
+
+function updateTransposeIndicator() {
+  const ind = document.getElementById('fsTransposeInd')
+  if (!ind) return
+  ind.textContent = (transposeAmount > 0 ? '+' : '') + transposeAmount
+  ind.classList.toggle('zero', transposeAmount === 0)
+}
+
+function transposeAll(delta) {
+  transposeAmount += delta
+  // ограничим диапазон ±11, чтобы не уходить в бесконечность
+  if (transposeAmount > 11) transposeAmount -= 12
+  if (transposeAmount < -11) transposeAmount += 12
+  updateTransposeIndicator()
+  renderFsPreviewContent()
+  showToast('Транспонирование: ' + (transposeAmount > 0 ? '+' : '') + transposeAmount)
+}
+
+function transposeReset() {
+  transposeAmount = 0
+  updateTransposeIndicator()
+  renderFsPreviewContent()
+  showToast('Транспонирование сброшено')
+}
+
+// ============================================================
+// АВТОСКРОЛЛ В ПОЛНОЭКРАННОМ ПРЕВЬЮ
+// ============================================================
+let autoScrollActive = false
+let autoScrollRAF = null
+let autoScrollLastTime = 0
+let autoScrollSpeed = parseInt(localStorage.getItem('fsScrollSpeed') || '40', 10)
+let autoScrollPausedUntil = 0  // таймстемп, до которого скролл «заморожен» после ручной прокрутки
+const AUTO_SCROLL_RESUME_DELAY = 2000 // мс — пауза после ручной прокрутки
+
+function getFsWrap() {
+  return document.querySelector('.fs-preview-wrap')
+}
+
+function updateScrollSpeedLabel() {
+  const input = document.getElementById('fsScrollSpeed')
+  if (!input) return
+  autoScrollSpeed = parseInt(input.value, 10) || 40
+  const label = document.getElementById('fsScrollSpeedLabel')
+  if (label) label.textContent = String(autoScrollSpeed)
+  safeSetItem('fsScrollSpeed', String(autoScrollSpeed))
+}
+
+function toggleAutoScroll() {
+  if (autoScrollActive) stopAutoScroll()
+  else startAutoScroll()
+}
+
+function startAutoScroll() {
+  const wrap = getFsWrap()
+  if (!wrap) return
+
+  if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 1) {
+    showToast('Уже в конце текста')
+    return
+  }
+
+  autoScrollActive = true
+  autoScrollLastTime = 0
+  autoScrollPausedUntil = 0
+  autoScrollAccumulator = 0   // ← добавили
+
+  const btn = document.getElementById('fsScrollBtn')
+  if (btn) btn.classList.add('playing')
+
+  autoScrollRAF = requestAnimationFrame(autoScrollStep)
+  showToast('Автоскролл запущен')
+}
+
+function stopAutoScroll(quiet = false) {
+  autoScrollActive = false
+  if (autoScrollRAF) {
+    cancelAnimationFrame(autoScrollRAF)
+    autoScrollRAF = null
+  }
+  const btn = document.getElementById('fsScrollBtn')
+  if (btn) btn.classList.remove('playing')
+  if (!quiet) showToast('Автоскролл остановлен')
+}
+
+let autoScrollAccumulator = 0  // накопленные «дробные» пиксели
+
+function autoScrollStep(timestamp) {
+  if (!autoScrollActive) return
+
+  const wrap = getFsWrap()
+  if (!wrap) {
+    stopAutoScroll(true)
+    return
+  }
+
+  // Первый кадр — просто запоминаем время
+  if (!autoScrollLastTime) {
+    autoScrollLastTime = timestamp
+    autoScrollRAF = requestAnimationFrame(autoScrollStep)
+    return
+  }
+
+  const now = performance.now()
+  // Если мы на паузе после ручной прокрутки — не двигаем
+  if (now < autoScrollPausedUntil) {
+    autoScrollLastTime = timestamp
+    autoScrollRAF = requestAnimationFrame(autoScrollStep)
+    return
+  }
+
+  const dt = (timestamp - autoScrollLastTime) / 1000 // секунды
+  autoScrollLastTime = timestamp
+
+  // Накапливаем дробную часть — иначе на малых скоростях
+  // приращение < 1px и scrollTop его округляет в 0
+  autoScrollAccumulator += autoScrollSpeed * dt
+
+  const wholePixels = Math.floor(autoScrollAccumulator)
+  if (wholePixels > 0) {
+    autoScrollAccumulator -= wholePixels
+    wrap.scrollTop += wholePixels
+  }
+
+  // Дошли до конца — стоп
+  if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 1) {
+    stopAutoScroll(true)
+    showToast('Конец текста')
+    return
+  }
+
+  autoScrollRAF = requestAnimationFrame(autoScrollStep)
+}
+
+// Ручная прокрутка колесом/тачем/клавишами — временная пауза
+function pauseAutoScrollTemporarily() {
+  if (!autoScrollActive) return
+  autoScrollPausedUntil = performance.now() + AUTO_SCROLL_RESUME_DELAY
+}
+
+// Навешиваем на контейнер оверлея — при любом ручном скролле
+document.addEventListener('DOMContentLoaded', () => {
+  const wrap = getFsWrap()
+  if (!wrap) return
+  wrap.addEventListener('wheel', pauseAutoScrollTemporarily, { passive: true })
+  wrap.addEventListener('touchmove', pauseAutoScrollTemporarily, { passive: true })
+})

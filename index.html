@@ -11,7 +11,7 @@
 
 <header>
   <h1>
-    TABULATORIUM
+    Tabulatorium
     <span class="saved-dot" id="savedDot">●</span>
   </h1>
   <button class="icon" onclick="openHelp()" title="Справка"><svg width="16" height="16" viewBox="0 0 352 484">
@@ -105,10 +105,22 @@
     <textarea id="editor" spellcheck="false" placeholder="Начни писать или нажми кнопку Пример..."></textarea>
   </section>
 
-  <section class="pane" id="panePreview">
+    <section class="pane" id="panePreview">
     <div class="pane-header">
       <span>Превью</span>
-      <span><b id="chordCount">0</b> аккордов</span>
+      <span style="display:flex;align-items:center;gap:10px;">
+        <span><b id="chordCount">0</b> аккордов</span>
+        <button class="icon" onclick="openFullscreenPreview()" title="Полный экран (F11 / F)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+            <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+            <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+          </svg>
+        </button>
+      </span>
     </div>
     <div class="preview-wrap">
       <pre id="preview"></pre>
@@ -120,6 +132,50 @@
   <span>Строк: <b id="statLines">0</b></span>
   <span>Символов: <b id="statChars">0</b></span>
   <span>Курсор: <b id="statCursor">1:1</b></span>
+</div>
+
+  <!-- ============ ПОЛНОЭКРАННОЕ ПРЕВЬЮ ============ -->
+<div class="fs-preview" id="fsPreview" aria-hidden="true">
+  <div class="fs-preview-toolbar">
+    <div class="fs-preview-controls">
+      <button class="icon" onclick="fsFontSmaller()" title="Меньше шрифт">A−</button>
+      <button class="icon" onclick="fsFontBigger()" title="Больше шрифт">A+</button>
+      <button class="icon" onclick="transposeAll(-1)" title="Ниже на полтона (↓)">♭</button>
+      <button class="icon" id="fsTransposeReset" onclick="transposeReset()" title="Сбросить транспонирование (T)">T</button>
+      <button class="icon" onclick="transposeAll(1)" title="Выше на полтона (↑)">♯</button>
+      <span class="fs-transpose-ind" id="fsTransposeInd">0</span>
+      <button class="icon" id="fsAwakeBtn" onclick="toggleWakeLock()" title="Не гасить экран">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      </button>
+            <button class="icon" id="fsScrollBtn" onclick="toggleAutoScroll()" title="Автоскролл (Пробел)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/>
+        </svg>
+      </button>
+      <input type="range" id="fsScrollSpeed" min="5" max="150" value="40"
+             oninput="updateScrollSpeedLabel()" title="Скорость автоскролла">
+      <span class="fs-scroll-speed" id="fsScrollSpeedLabel">40</span>
+            <span class="fs-preview-hint">Esc — выход, ←/→ — аккорды, Пробел — автоскролл</span>
+    </div>
+    <button class="icon" onclick="closeFullscreenPreview()" title="Закрыть (Esc)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="6" y1="6" x2="18" y2="18"/>
+        <line x1="18" y1="6" x2="6" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="fs-preview-wrap">
+    <pre id="fsPreviewContent"></pre>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
