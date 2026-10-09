@@ -212,39 +212,48 @@
   </div>
 </div>
 
-<!-- ============ МЕНЮ ============ -->
+<!-- ============ МЕНЮ (off-canvas справа) ============ -->
 <div class="menu-backdrop" id="menuBackdrop" onclick="closeMenu()"></div>
-<div class="menu" id="mainMenu">
-  <button class="menu-item" onclick="menuAction('open')">
-    <span>Открыть файл…</span>
-    <span class="menu-hotkey">Ctrl+O</span>
-  </button>
-  <button class="menu-item" id="menuSave" onclick="menuAction('save')">
-    <span>Сохранить</span>
-    <span class="menu-hotkey">Ctrl+S</span>
-  </button>
-  <button class="menu-item" onclick="menuAction('saveAs')">
-    <span>Сохранить как .txt</span>
-  </button>
-  <div class="menu-sep"></div>
-  <button class="menu-item" onclick="menuAction('pdf')">
-    <span>Экспорт → PDF</span>
-  </button>
-  <button class="menu-item" onclick="menuAction('png')">
-    <span>Экспорт → PNG</span>
-  </button>
-  <button class="menu-item" onclick="menuAction('plain')">
-    <span>Экспорт → Чистый текст</span>
-  </button>
-  <div class="menu-sep"></div>
-  <button class="menu-item" onclick="menuAction('copy')">
-    <span>Копировать всё</span>
-  </button>
-  <div class="menu-sep"></div>
-  <button class="menu-item menu-danger" onclick="menuAction('clear')">
-    <span>Очистить текст</span>
-  </button>
-</div>
+<aside class="menu" id="mainMenu" aria-hidden="true">
+  <div class="menu-header">
+    <span>Меню</span>
+    <button class="menu-close" onclick="closeMenu()" title="Закрыть">✕</button>
+  </div>
+  <div class="menu-body">
+    <button class="menu-item" onclick="menuAction('open')">
+      <span>Открыть файл…</span>
+      <span class="menu-hotkey">Ctrl+O</span>
+    </button>
+    <button class="menu-item" id="menuSave" onclick="menuAction('save')">
+      <span>Сохранить</span>
+      <span class="menu-hotkey">Ctrl+S</span>
+    </button>
+    <button class="menu-item" onclick="menuAction('saveAs')">
+      <span>Сохранить как .txt</span>
+    </button>
+    <div class="menu-sep"></div>
+    <button class="menu-item" onclick="menuAction('pdf')">
+      <span>Экспорт → PDF</span>
+    </button>
+    <button class="menu-item" onclick="menuAction('png')">
+      <span>Экспорт → PNG</span>
+    </button>
+    <button class="menu-item" onclick="menuAction('plain')">
+      <span>Экспорт → Чистый текст</span>
+    </button>
+    <div class="menu-sep"></div>
+    <button class="menu-item" onclick="menuAction('copy')">
+      <span>Копировать всё</span>
+    </button>
+    <div class="menu-sep"></div>
+    <button class="menu-item menu-danger" onclick="menuAction('clear')">
+      <span>Очистить текст</span>
+    </button>
+    <button class="menu-item" onclick="menuAction('example')">
+  <span>Пример песни</span>
+</button>
+  </div>
+</aside>
   
 <script src="js/main.js"></script>
 

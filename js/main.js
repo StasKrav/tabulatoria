@@ -1092,18 +1092,18 @@ function openMenu() {
   // Синхронизируем состояние пункта "Сохранить"
   const btnMenuSave = document.getElementById('menuSave');
   if (btnMenuSave) {
-    // Сохранить активна, если есть что сохранять
     const canSave = currentFileHandle || currentFileName;
     btnMenuSave.disabled = !canSave || (currentFileHandle && !isDirty);
   }
   mainMenu.classList.add('show');
   menuBackdrop.classList.add('show');
+  mainMenu.setAttribute('aria-hidden', 'false');
 }
 
 function closeMenu() {
   mainMenu.classList.remove('show');
-  
   menuBackdrop.classList.remove('show');
+  mainMenu.setAttribute('aria-hidden', 'true');
 }
 
 // Роутинг кликов по пунктам меню
@@ -1118,6 +1118,7 @@ function menuAction(action) {
     case 'plain':  exportPlainText(); break;
     case 'copy':   copyToClipboard(); break;
     case 'clear':  clearAll(); break;
+    case 'example': loadExample(); break;
   }
 }
 
