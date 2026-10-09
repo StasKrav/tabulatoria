@@ -24,6 +24,7 @@ body {
   background: var(--bg);
   color: var(--text);
   height: 100vh;
+  height: 100dvh;  /* ← добавили */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -618,21 +619,6 @@ main {
   border-color: var(--accent);
 }
 
-@media (max-width: 780px) {
-  main {
-    flex-direction: column;
-  }
-  .folder-toolbar {
-    justify-content: center;
-  }
-}
-@media (max-width: 1100px) {
-  .folder-group {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
 
 /* -------- Меню гамбургера -------- */
 .menu-backdrop {
@@ -698,3 +684,14 @@ main {
   cursor: not-allowed;
 }
 .menu-item:disabled:hover { background: transparent; }
+
+
+/* -------- Мобильные вкладки (по умолчанию скрыты) -------- */
+.mobile-tabs {
+  display: none;
+}
+
+/* -------- Мобильная полоса аккордов (по умолчанию скрыта) -------- */
+.chord-bar-mobile {
+  display: none;
+}

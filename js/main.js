@@ -124,8 +124,11 @@ function checkApiSupport() {
   }
 
   if (!('showOpenFilePicker' in window)) {
-    document.querySelector('button[onclick="openFile()"]').title =
-      'В этом браузере файл откроется только для чтения (Ctrl+S будет скачивать копию)'
+    const menuOpenItem = document.querySelector('.menu-item[onclick*="open"]');
+    if (menuOpenItem) {
+      menuOpenItem.title =
+        'В этом браузере файл откроется только для чтения (Ctrl+S будет скачивать копию)';
+    }
   }
 }
 
@@ -543,6 +546,24 @@ document.addEventListener('visibilitychange', () => {
 })
 
 // ============================================================
+// РЕАГИРОВАНИЕ НА СМЕНУ РАЗМЕРА ОКНА
+// ============================================================
+window.addEventListener('resize', () => {
+  if (!isMobileView()) {
+    // На десктопе: убрать все мобильные состояния
+    const bar = document.getElementById('chordBarMobile')
+    if (bar) bar.style.display = 'none'
+    document.querySelector('.chords-bar')?.classList.remove('collapsed')
+    document.querySelectorAll('.pane').forEach(p => p.classList.add('active'))
+  } else {
+    // На мобильном: обновить состояние полосы и вкладок
+    updateChordBarVisibilityMobile()
+    const activePane = document.querySelector('.pane.active')
+    if (!activePane) switchMobileTab('editor')
+  }
+})
+
+// ============================================================
 // РЕНДЕР ПРЕВЬЮ
 // ============================================================
 function renderLine(line) {
@@ -685,38 +706,67 @@ function parseChordList(str) {
 }
 
 function applyChords() {
-  chordList = parseChordList(chordsInput.value)
-  renderChordButtons()
-  safeSetItem('chordsList', chordsInput.value)
-  showToast(chordList.length ? `Аккордов: ${chordList.length}` : 'Список пуст')
+  chordList = parseChordList(chordsInput.value);
+  renderChordButtons();
+  safeSetItem('chordsList', chordsInput.value);
+  showToast(chordList.length ? `Аккордов: ${chordList.length}` : 'Список пуст');
+
+  // На мобильном: если аккорды заданы — свернуть поле ввода
+  if (isMobileView() && chordList.length > 0) {
+    collapseChordsInput();
+  }
 }
 
 function renderChordButtons() {
-  chordsButtons.innerHTML = ''
+  // Старая панель (десктоп) — с хоткеями
+  chordsButtons.innerHTML = '';
   chordList.forEach((chord, idx) => {
-    const b = document.createElement('button')
-    b.className = 'chord-btn'
-    b.type = 'button'
+    const b = document.createElement('button');
+    b.className = 'chord-btn';
+    b.type = 'button';
     if (idx < 9) {
-      const k = document.createElement('span')
-      k.className = 'key'
-      k.textContent = String(idx + 1)
-      b.appendChild(k)
+      const k = document.createElement('span');
+      k.className = 'key';
+      k.textContent = String(idx + 1);
+      b.appendChild(k);
     }
-    const label = document.createElement('span')
-    label.textContent = chord
-    b.appendChild(label)
-    b.onclick = () => insertChord(chord)
-    chordsButtons.appendChild(b)
-  })
+    const label = document.createElement('span');
+    label.textContent = chord;
+    b.appendChild(label);
+    b.onclick = () => insertChord(chord);
+    chordsButtons.appendChild(b);
+  });
+
+  // Мобильная полоса — без хоткеев, только названия
+  const mobileScroll = document.getElementById('chordBarScroll');
+  if (mobileScroll) {
+    mobileScroll.innerHTML = '';
+    chordList.forEach((chord) => {
+      const b = document.createElement('button');
+      b.className = 'chord-btn';
+      b.type = 'button';
+      const label = document.createElement('span');
+      label.textContent = chord;
+      b.appendChild(label);
+      b.onclick = () => insertChord(chord);
+      mobileScroll.appendChild(b);
+    });
+  }
+
+  // Обновить видимость мобильной полосы
+  updateChordBarVisibilityMobile();
 }
 
 function restoreChordsFromStorage() {
-  const saved = localStorage.getItem('chordsList')
+  const saved = localStorage.getItem('chordsList');
   if (saved) {
-    chordsInput.value = saved
-    chordList = parseChordList(saved)
-    renderChordButtons()
+    chordsInput.value = saved;
+    chordList = parseChordList(saved);
+    renderChordButtons();
+    // На мобильном — свернуть поле, если аккорды уже есть
+    if (isMobileView() && chordList.length > 0) {
+      collapseChordsInput();
+    }
   }
 }
 
@@ -1093,13 +1143,14 @@ document.addEventListener('keydown', e => {
   checkApiSupport()
   restoreChordsFromStorage()
 
-  // Восстанавливаем «черновик» из localStorage (только если файлового нет)
   const savedText = localStorage.getItem('chordsEditorText')
   if (savedText) editor.value = savedText
 
+  // Активируем вкладку "Редактор" по умолчанию
+  switchMobileTab('editor')
+
   refresh()
 
-  // Пробуем восстановить папку
   await restoreFolder()
 })()
 
@@ -1230,3 +1281,68 @@ function exportPlainText() {
       showToast('Текст сохранён как .txt')
     })
 }
+
+// ============================================================
+// МОБИЛЬНЫЕ ВКЛАДКИ И ПОЛОСА АККОРДОВ
+// ============================================================
+
+function isMobileView() {
+  return window.matchMedia('(max-width: 780px)').matches;
+}
+
+// Переключение вкладок
+function switchMobileTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  const paneEditor = document.getElementById('paneEditor');
+  const panePreview = document.getElementById('panePreview');
+
+  if (tab === 'editor') {
+    paneEditor.classList.add('active');
+    panePreview.classList.remove('active');
+    // Фокус в редактор — удобно сразу писать
+    setTimeout(() => editor.focus(), 50);
+  } else {
+    paneEditor.classList.remove('active');
+    panePreview.classList.add('active');
+  }
+}
+
+// Показ/скрытие мобильной полосы аккордов
+function updateChordBarVisibilityMobile() {
+  if (!isMobileView()) return;
+
+  const bar = document.getElementById('chordBarMobile');
+  if (!bar) return;
+
+  if (chordList.length > 0) {
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// Сворачивание поля аккордов (только мобильный)
+function collapseChordsInput() {
+  if (!isMobileView()) return;
+  const bar = document.querySelector('.chords-bar');   // ← вся панель
+  if (bar) bar.classList.add('collapsed');
+}
+
+function expandChordsInput() {
+  const bar = document.querySelector('.chords-bar');   // ← вся панель
+  if (!bar) return;
+  bar.classList.remove('collapsed');
+  setTimeout(() => chordsInput.focus(), 50);
+}
+
+function toggleChordsInput() {
+  const bar = document.querySelector('.chords-bar');
+  if (!bar) return;
+  if (bar.classList.contains('collapsed')) expandChordsInput();
+  else collapseChordsInput();
+}
+
+

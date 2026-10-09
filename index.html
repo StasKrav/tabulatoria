@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/mobile.css"  media="(max-width: 899px)">
+<link rel="stylesheet" href="css/mobile.css">
 <title>TABULATORIUM</title>
 </head>
 <body>
@@ -20,7 +20,7 @@
   <path d="M160,384 L160,384" stroke="currentColor" stroke-width="40" fill="none" stroke-linecap="round"/>
   </svg>
   </button>
-  <button onclick="loadExample()" title="Загрузить пример песни">Пример</button>
+  <button class="example-btn" onclick="loadExample()" title="Загрузить пример песни">Пример</button>
 <button class="icon" onclick="toggleMenu(event)" title="Меню">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" stroke-width="2"
@@ -34,17 +34,17 @@
 </header>
 
 <div class="chords-bar">
-  <div class="chords-input-row">
+  <div class="chords-input-row" id="chordsInputRow">
     <label>Аккорды песни:</label>
-    <input type="text" id="chordsInput"
-           placeholder="Введи название всех аккордов в этой песне"
-           title="Введи аккорды через пробел или запятую и нажми ✔"
-           spellcheck="false" autocomplete="off">
-    <button class="primary" onclick="applyChords()" title="Применить список"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2.4"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <polyline points="4 12 10 18 20 6"/>
-    </svg>
+    <input type="text" id="chordsInput" ... >
+    <button class="primary" onclick="applyChords()" title="Применить список">✔</button>
+    <button class="icon" id="btnEditChords" onclick="toggleChordsInput()" title="Изменить список аккордов" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
     </button>
   </div>
   <div class="chords-buttons" id="chordsButtons"></div>
@@ -81,15 +81,31 @@
   </div>
 </div>
 
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="tab-btn active" data-tab="editor" onclick="switchMobileTab('editor')">Редактор</button>
+  <button class="tab-btn" data-tab="preview" onclick="switchMobileTab('preview')">Превью</button>
+</div>
+
 <main>
-  <section class="pane">
+  <section class="pane" id="paneEditor">
     <div class="pane-header">
       <span id="editorTitle">Редактор</span>
+    </div>
+    <div class="chord-bar-mobile" id="chordBarMobile" style="display: none;">
+      <button class="icon chord-bar-edit" id="btnEditChordsMobile" onclick="toggleChordsInput()" title="Изменить список аккордов">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </button>
+      <div class="chord-bar-scroll" id="chordBarScroll"></div>
     </div>
     <textarea id="editor" spellcheck="false" placeholder="Начни писать или нажми кнопку Пример..."></textarea>
   </section>
 
-  <section class="pane">
+  <section class="pane" id="panePreview">
     <div class="pane-header">
       <span>Превью</span>
       <span><b id="chordCount">0</b> аккордов</span>

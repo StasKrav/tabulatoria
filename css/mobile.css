@@ -1,0 +1,140 @@
+/* ============================================================
+   МОБИЛЬНАЯ ВЕРСИЯ (< 780px)
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  .folder-group {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 780px) {
+
+  /* -------- Скрываем лишнее -------- */
+  .toolbar,
+  .folder-group,
+  .status {
+    display: none;
+  }
+
+  /* Старая панель аккордов на мобильном: скрываем РЯД КНОПОК,
+     но оставляем поле ввода и ✔ — чтобы можно было задать аккорды. */
+  .chords-buttons {
+    display: none;
+  }
+
+  /* Когда поле ввода свёрнуто — скрываем всю панель.
+     Класс .collapsed вешается через JS после применения аккордов. */
+  .chords-bar.collapsed {
+    display: none;
+  }
+
+  .example-btn {
+    display: none;
+  }
+
+  /* -------- Вкладки -------- */
+  .mobile-tabs {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 0;
+    min-height: 44px;
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-btn:hover {
+    background: var(--panel-2);
+    color: var(--text);
+  }
+
+  /* -------- main становится однопанельным -------- */
+  main {
+    flex-direction: column;
+  }
+
+  /* По умолчанию обе панели скрыты, показывается только активная */
+  .pane {
+    display: none;
+  }
+
+  .pane.active {
+    display: flex;
+  }
+
+  /* -------- Мобильная полоса аккордов -------- */
+  .chord-bar-mobile {
+    display: flex;
+    align-items: stretch;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    min-height: 44px;
+  }
+
+  .chord-bar-edit {
+    flex-shrink: 0;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--border);
+    padding: 10px 12px;
+    background: var(--panel-2);
+    color: var(--accent);
+    min-height: 44px;
+  }
+
+  .chord-bar-edit:hover {
+    background: var(--accent);
+    color: #14161c;
+  }
+
+  .chord-bar-scroll {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;   /* без индикатора */
+  }
+
+  .chord-bar-scroll::-webkit-scrollbar {
+    display: none;           /* без индикатора в WebKit */
+  }
+
+  .chord-bar-scroll .chord-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 34px;
+  }
+
+  /* -------- Тач-зоны -------- */
+  .chord-btn,
+  .section-btn {
+    min-height: 34px;
+  }
+
+  /* -------- Редактор и превью на всю высоту -------- */
+  .pane {
+    flex: 1;
+    min-height: 0;
+  }
+}
