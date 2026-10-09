@@ -13,11 +13,13 @@
     --panel-2: #252932;
     --border: #313640;
     --text: #e6e8ee;
-    --muted: #8b91a0;
     --accent: #7aa2f7;
     --accent-2: #9ece6a;
     --chord: #f7768e;
     --danger: #f7768e;
+    --muted: #8b91a0;
+    --placeholder: #3a4050;
+    --warn: #e0af68;
   }
 
   body {
@@ -57,7 +59,8 @@
     transition: opacity 0.3s;
   }
   h1 .saved-dot.visible { opacity: 1; }
-  h1 .saved-dot.dirty { color: var(--danger); }
+  h1 .saved-dot.dirty   { color: var(--danger); }
+  h1 .saved-dot.external { color: var(--warn); }
 
   button {
     background: var(--panel-2);
@@ -256,7 +259,12 @@
     overflow: auto;
   }
 
-  #editor::placeholder { color: var(--muted); }
+  #editor::placeholder,
+  #chordsInput::placeholder,
+  .new-song-input::placeholder {
+    color: var(--placeholder);
+    opacity: 1;
+  }
 
   .preview-wrap {
     flex: 1;
@@ -548,6 +556,7 @@
   <button onclick="exportPlainText()">Чистый текст</button>
   <button onclick="copyToClipboard()">Копировать</button>
   <button class="danger" onclick="clearAll()">Очистить</button>
+  <button onclick="openFile()">Открыть</button>
   <button id="btnSave" class="primary" onclick="saveCurrentSong()" disabled title="Сохранить в файл (Ctrl+S)">
     Сохранить
   </button>
@@ -558,7 +567,10 @@
 <div class="chords-bar">
   <div class="chords-input-row">
     <label>Аккорды песни:</label>
-    <input type="text" id="chordsInput" placeholder="Am C G F Dm E7 Am#7b5 — введи через пробел или запятую и нажми ✔" spellcheck="false" autocomplete="off">
+    <input type="text" id="chordsInput"
+           placeholder="Введи название всех аккордов в этой песне"
+           title="Введи аккорды через пробел или запятую и нажми ✔"
+           spellcheck="false" autocomplete="off">
     <button class="primary" onclick="applyChords()" title="Применить список"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
          stroke="currentColor" stroke-width="2.4"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -605,7 +617,7 @@
     <div class="pane-header">
       <span id="editorTitle">Редактор</span>
     </div>
-    <textarea id="editor" spellcheck="false" placeholder="Вступление:&#10;[Am] [Dm] [G] [C]&#10;&#10;Куплет:&#10;[Am]Я помню чудное [F]мгновенье&#10;[C]Передо мной явилась [G]ты"></textarea>
+    <textarea id="editor" spellcheck="false" placeholder="Начни писать или нажми кнопку Пример..."></textarea>
   </section>
 
   <section class="pane">
@@ -826,6 +838,11 @@ function checkApiSupport() {
     folderStatus.textContent = '📁 Браузер не умеет работать с папками';
     folderStatus.classList.remove('active');
   }
+
+  if (!('showOpenFilePicker' in window)) {
+    document.querySelector('button[onclick="openFile()"]').title =
+      'В этом браузере файл откроется только для чтения (Ctrl+S будет скачивать копию)';
+  }
 }
 
 // ============================================================
@@ -1014,13 +1031,22 @@ async function openSong(song) {
 }
 
 async function saveCurrentSong() {
-  if (!currentFileHandle) return false;
+  // Внешний файл — сохраняем как .txt через браузерный download
+  if (!currentFileHandle) {
+    if (currentFileName) {
+      saveAs('txt');
+      return true;
+    }
+    return false;
+  }
+
+  // Обычный файл из папки — пишем через File System Access API
   try {
     const writable = await currentFileHandle.createWritable();
     await writable.write(editor.value);
     await writable.close();
     isDirty = false;
-    clearDraft(currentFileName);   // ← черновик больше не нужен
+    clearDraft(currentFileName);
     updateSavedIndicator();
     updateEditorTitle();
     showToast('Сохранено: ' + currentFileName.replace(/\.txt$/i, ''));
@@ -1035,26 +1061,40 @@ async function saveCurrentSong() {
 function updateSavedIndicator() {
   const btnSave = document.getElementById('btnSave');
 
-  if (!currentFileHandle) {
-    // Файл не открыт — кнопка не нужна
-    savedDot.classList.remove('visible');
+  // --- Состояние 1: ни файла, ни имени — сохранять нечего и некуда
+  if (!currentFileHandle && !currentFileName) {
+    savedDot.classList.remove('visible', 'dirty', 'external');
     btnSave.disabled = true;
     btnSave.textContent = 'Сохранить';
+    btnSave.title = 'Нечего сохранять';
     return;
   }
 
   savedDot.classList.add('visible');
-  savedDot.classList.toggle('dirty', isDirty);
-  savedDot.title = isDirty ? 'Не сохранено' : 'Сохранено';
 
-  // Кнопка активна только если есть несохранённые изменения
-  btnSave.disabled = !isDirty;
-  btnSave.textContent = isDirty ? 'Сохранить ●' : 'Сохранить';
+  // --- Состояние 2: файл из папки — handle есть
+  if (currentFileHandle) {
+    savedDot.classList.remove('external');
+    savedDot.classList.toggle('dirty', isDirty);
+    savedDot.title = isDirty ? 'Не сохранено' : 'Сохранено';
+    btnSave.disabled = !isDirty;
+    btnSave.textContent = isDirty ? 'Сохранить ●' : 'Сохранить';
+    btnSave.title = 'Сохранить в файл (Ctrl+S)';
+    return;
+  }
+
+  // --- Состояние 3: внешний файл — есть имя, нет handle
+  savedDot.classList.remove('dirty');
+  savedDot.classList.add('external');
+  savedDot.title = 'Внешний файл (не привязан к папке)';
+  btnSave.disabled = false;             // всегда активна
+  btnSave.textContent = 'Сохранить .txt';
+  btnSave.title = 'Скачать как .txt с исходным именем (Ctrl+S)';
 }
 
 function updateEditorTitle() {
   if (currentFileName) {
-    editorTitle.textContent = '✏️ ' + currentFileName.replace(/\.txt$/i, '') + (isDirty ? ' ●' : '');
+    editorTitle.textContent = '' + currentFileName.replace(/\.txt$/i, '') + (isDirty ? ' ●' : '');
   } else {
     editorTitle.textContent = 'Редактор';
   }
@@ -1395,33 +1435,97 @@ function safeSetItem(key, value) {
 }
 
 // ============================================================
-// ФАЙЛЫ (импорт/экспорт)
+// ОТКРЫТИЕ ВНЕШНЕГО ФАЙЛА
 // ============================================================
-function openFile() { document.getElementById('fileInput').click(); }
+async function openFile() {
+  if (isDirty && !confirm('Текущая песня не сохранена. Открыть другую без сохранения?')) {
+    return;
+  }
 
+  // --- Chrome / Edge / Opera: настоящий read-write handle
+  if ('showOpenFilePicker' in window) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'Текст',
+          accept: { 'text/plain': ['.txt', '.md'] },
+        }],
+        multiple: false,
+        excludeAcceptAllOption: false,
+      });
+
+      const file = await handle.getFile();
+      const fileText = await file.text();
+      const draftText = loadDraft(handle.name);
+
+      let textToUse = fileText;
+      let restoredFromDraft = false;
+
+      if (draftText !== null && draftText !== fileText) {
+        const useDraft = confirm(
+          'Для этого файла есть несохранённый черновик.\n\n' +
+          'OK — восстановить черновик\n' +
+          'Отмена — открыть версию с диска (черновик будет удалён)'
+        );
+        if (useDraft) {
+          textToUse = draftText;
+          restoredFromDraft = true;
+        } else {
+          clearDraft(handle.name);
+        }
+      }
+
+      editor.value = textToUse;
+      currentFileHandle = handle;            // ← настоящий handle, read-write
+      currentFileName = handle.name;
+      isDirty = restoredFromDraft;
+
+      updateSavedIndicator();
+      updateEditorTitle();
+      refresh();
+
+      showToast(restoredFromDraft
+        ? 'Черновик восстановлен: ' + handle.name.replace(/\.txt$/i, '')
+        : 'Открыто: ' + handle.name.replace(/\.txt$/i, ''));
+    } catch (e) {
+      if (e.name === 'AbortError') return;   // пользователь отменил диалог
+      console.error(e);
+      showToast('Не удалось открыть файл: ' + e.message, true);
+    }
+    return;
+  }
+
+  // --- Firefox / Safari: fallback через <input type="file">, только чтение
+  document.getElementById('fileInput').click();
+}
+
+// Fallback-обработчик (срабатывает только там, где нет showOpenFilePicker)
 document.getElementById('fileInput').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = ev => {
     editor.value = ev.target.result;
-    currentFileHandle = null;
-    currentFileName = null;
+    currentFileHandle = null;          // ← read-only: писать некуда
+    currentFileName = file.name;
     isDirty = true;
     updateEditorTitle();
     updateSavedIndicator();
     refresh();
-    showToast('Загружено: ' + file.name);
+    showToast('Загружено (только чтение): ' + file.name);
   };
   reader.readAsText(file);
   e.target.value = '';
 });
 
 function saveAs(ext) {
-  const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+  const mime = { txt: 'text/plain', pdf: 'application/pdf', png: 'image/png' }[ext] || 'application/octet-stream';
+  const blob = new Blob([editor.value], { type: `${mime};charset=utf-8` });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = currentFileName || `song-${Date.now()}.${ext}`;
+  const base = currentFileName ? currentFileName.replace(/\.[^.]+$/,'') : `song-${Date.now()}`;
+  a.download = `${base}.${ext}`;
   a.click();
   URL.revokeObjectURL(a.href);
   showToast('Сохранено как .' + ext);
