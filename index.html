@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Аккорды над текстом</title>
+<title>TABULATORIUM</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -50,6 +50,15 @@
     gap: 8px;
   }
 
+  h1 .saved-dot {
+    color: var(--accent-2);
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  h1 .saved-dot.visible { opacity: 1; }
+  h1 .saved-dot.dirty { color: var(--danger); }
+
   button {
     background: var(--panel-2);
     color: var(--text);
@@ -64,11 +73,10 @@
   button:hover { background: var(--accent); color: #14161c; border-color: var(--accent); }
   button.primary { background: var(--accent); color: #14161c; font-weight: 600; }
   button.danger:hover { background: var(--danger); border-color: var(--danger); color: white; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:disabled:hover { background: var(--panel-2); color: var(--text); border-color: var(--border); }
 
-  button.icon {
-    padding: 7px 10px;
-    font-size: 14px;
-  }
+  button.icon { padding: 7px 10px; font-size: 14px; }
 
   .toolbar {
     background: var(--panel);
@@ -90,6 +98,30 @@
     font-weight: 600;
   }
   .section-btn:hover { background: var(--accent-2); color: #14161c; border-color: var(--accent-2); }
+
+  .folder-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;   /* ← прижимает группу к правому краю */
+    flex-wrap: wrap;
+  }
+
+  .folder-status {
+    color: var(--muted);
+    font-size: 12px;
+    font-family: "JetBrains Mono", monospace;
+    padding: 5px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folder-status.active { color: var(--accent-2); border-color: var(--accent-2); }
 
   /* -------- Панель аккордов -------- */
   .chords-bar {
@@ -276,12 +308,13 @@
     opacity: 0;
     transition: all 0.3s;
     pointer-events: none;
-    z-index: 100;
+    z-index: 300;
   }
 
   .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); color: white; }
 
-  /* -------- Модалка хелпа -------- */
+  /* -------- Модалки -------- */
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -307,18 +340,22 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
 
+  .modal.wide { max-width: 900px; }
+
   .modal-header {
     padding: 16px 20px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
   }
 
   .modal-header h2 {
     font-size: 16px;
     color: var(--accent);
     font-weight: 600;
+    flex: 1;
   }
 
   .modal-close {
@@ -348,7 +385,7 @@
   }
   .modal-body h3:first-child { margin-top: 0; }
 
-  .modal-body p { margin-bottom: 10px; color: var(--text); }
+  .modal-body p { margin-bottom: 10px; }
 
   .modal-body code {
     background: var(--panel-2);
@@ -367,7 +404,6 @@
     border-radius: 4px;
     font-family: "JetBrains Mono", monospace;
     font-size: 12px;
-    color: var(--text);
   }
 
   .modal-body pre {
@@ -383,24 +419,124 @@
     line-height: 1.5;
   }
 
-  .modal-body ul {
-    padding-left: 20px;
-    margin-bottom: 10px;
+  .modal-body ul { padding-left: 20px; margin-bottom: 10px; }
+  .modal-body li { margin-bottom: 4px; }
+
+  /* -------- Список песен -------- */
+  .songs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 55vh;
+    overflow-y: auto;
   }
 
-  .modal-body li { margin-bottom: 4px; }
+  .song-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-size: 14px;
+  }
+
+  .song-item:hover {
+    background: var(--panel);
+    border-color: var(--accent);
+  }
+
+  .song-item.current {
+    border-color: var(--accent-2);
+    background: var(--panel);
+  }
+
+  .song-item .song-icon { color: var(--chord); }
+  .song-item .song-name { flex: 1; }
+  .song-item .song-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .song-item:hover .song-actions { opacity: 1; }
+  .song-item .song-actions button {
+    padding: 4px 8px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+  }
+
+  .songs-empty {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 30px 10px;
+    font-style: italic;
+  }
+
+  .folder-info {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    font-family: "JetBrains Mono", monospace;
+    word-break: break-all;
+  }
+
+  /* -------- Уведомление про браузер -------- */
+  .api-warning {
+    background: var(--panel-2);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .api-warning b { color: var(--danger); }
+
+  .new-song-input {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: "JetBrains Mono", monospace;
+    width: 100%;
+    outline: none;
+  }
+  .new-song-input:focus { border-color: var(--accent); }
 
   @media (max-width: 780px) {
     main { flex-direction: column; }
+    .folder-toolbar { justify-content: center; }
+  }
+  @media (max-width: 1100px) {
+    .folder-group {
+      margin-left: 0;
+      width: 100%;
+      justify-content: flex-end;
+    }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>TABULATORIUM</h1>
-  <button class="icon" onclick="openHelp()" title="Справка">❓</button>
-  <button onclick="openFile()">Открыть</button>
+  <h1>
+    TABULATORIUM
+    <span class="saved-dot" id="savedDot">●</span>
+  </h1>
+  <button class="icon" onclick="openHelp()" title="Справка"><svg width="16" height="16" viewBox="0 0 352 484">
+  <path d="M96,192 C96,96 256,96 256,192" stroke="currentColor" stroke-width="32" fill="none" stroke-linecap="round"/>
+  <path d="M256,192 C256,288 160,256 160,320" stroke="currentColor" stroke-width="32" fill="none" stroke-linecap="round"/>
+  <path d="M160,384 L160,384" stroke="currentColor" stroke-width="40" fill="none" stroke-linecap="round"/>
+  </svg>
+  </button>
   <button onclick="saveAs('txt')">.txt</button>
   <button onclick="exportPDF()">PDF</button>
   <button onclick="exportPNG()">PNG</button>
@@ -411,6 +547,20 @@
   <input type="file" id="fileInput" hidden accept=".txt,.md">
 </header>
 
+<div class="chords-bar">
+  <div class="chords-input-row">
+    <label>Аккорды песни:</label>
+    <input type="text" id="chordsInput" placeholder="Am C G F Dm E7 Am#7b5 — введи через пробел или запятую и нажми ✔" spellcheck="false" autocomplete="off">
+    <button class="primary" onclick="applyChords()" title="Применить список"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="4 12 10 18 20 6"/>
+    </svg>
+    </button>
+  </div>
+  <div class="chords-buttons" id="chordsButtons"></div>
+</div>
+
 <div class="toolbar">
   <label>Секции:</label>
   <button class="section-btn" onclick="insertSection('Вступление')">Вступление</button>
@@ -420,21 +570,32 @@
   <button class="section-btn" onclick="insertSection('Проигрыш')">Проигрыш</button>
   <button class="section-btn" onclick="insertSection('Соло')">Соло</button>
   <button class="section-btn" onclick="insertSection('Кода')">Кода</button>
-</div>
 
-<div class="chords-bar">
-  <div class="chords-input-row">
-    <label>Аккорды песни:</label>
-    <input type="text" id="chordsInput" placeholder="Am C G F Dm E7 Am#7b5 — введи через пробел или запятую и нажми ✔" spellcheck="false" autocomplete="off">
-    <button class="primary" onclick="applyChords()" title="Применить список">✔</button>
+  <div class="folder-group">
+    <span class="folder-status" id="folderStatus">Папка не выбрана</span>
+    <button id="btnPickFolder" onclick="pickFolder()">Выбрать папку</button>
+    <button id="btnSongList" onclick="openSongList()" disabled>Список песен</button>
+    <button id="btnNewSong" onclick="newSong()" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    </button>
+    <button id="btnRefresh" onclick="refreshSongList()" disabled title="Обновить список"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12a9 9 0 1 1-3-6.7"/>
+      <polyline points="21 4 21 10 15 10"/>
+    </svg>
+    </button>
   </div>
-  <div class="chords-buttons" id="chordsButtons"></div>
 </div>
 
 <main>
   <section class="pane">
     <div class="pane-header">
-      <span>Редактор</span>
+      <span id="editorTitle">Редактор</span>
     </div>
     <textarea id="editor" spellcheck="false" placeholder="Вступление:&#10;[Am] [Dm] [G] [C]&#10;&#10;Куплет:&#10;[Am]Я помню чудное [F]мгновенье&#10;[C]Передо мной явилась [G]ты"></textarea>
   </section>
@@ -458,89 +619,552 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- ============ МОДАЛКА ХЕЛПА ============ -->
-<div class="modal-backdrop" id="helpModal" onclick="if(event.target===this) closeHelp()">
-  <div class="modal" role="dialog" aria-labelledby="helpTitle">
+<!-- ============ МОДАЛКА: ХЕЛП ============ -->
+<div class="modal-backdrop" id="helpModal" onclick="if(event.target===this) closeModal('helpModal')">
+  <div class="modal" role="dialog">
     <div class="modal-header">
-      <h2 id="helpTitle">❓ Справка</h2>
-      <button class="modal-close" onclick="closeHelp()" title="Закрыть">✕</button>
+      <h2>? Справка</h2>
+      <button class="modal-close" onclick="closeModal('helpModal')" title="Закрыть">✕</button>
     </div>
     <div class="modal-body">
 
-      <h3>🎼 Как писать аккорды</h3>
+      <h3>Как писать аккорды</h3>
       <p>Аккорд в квадратных скобках ставится <b>перед слогом или словом</b>, на котором он играется. В превью он встанет над этим слогом.</p>
       <pre>[Am]Я помню чудное [F]мгновенье
 [C]Передо мной явилась [G]ты</pre>
-      <p>Результат:</p>
-      <pre>Am            F
-Я помню чудное мгновенье
-C                G
-Передо мной явилась ты</pre>
 
-      <h3>🎸 Строка только из аккордов</h3>
+      <h3>Строка только из аккордов</h3>
       <p>Если в строке нет текста, только аккорды — она отрисуется как чистая строка аккордов (для вступлений и проигрышей):</p>
       <pre>[Am] [Dm] [G] [C]</pre>
-      <p>Результат: <code>Am Dm G C</code></p>
 
-      <h3>📑 Секции песни</h3>
-      <p>Кнопки <b>Вступление, Куплет, Припев, Бридж, Проигрыш, Соло, Кода</b> вставляют строку-заголовок над текущей позицией и переводят курсор на новую строку — можно сразу писать аккорды.</p>
+      <h3>Секции песни</h3>
+      <p>Кнопки <b>Вступление, Куплет, Припев…</b> вставляют строку-заголовок над текущей позицией и переводят курсор на новую строку.</p>
 
-      <h3>⌨️ Кнопки аккордов и хоткеи 1–9</h3>
-      <p>Введи аккорды своей песни через пробел (или запятую) в поле <b>«Аккорды песни»</b> и нажми <kbd>Enter</kbd> или <b>✔</b>. Появятся кнопки.</p>
-      <p>Клик по кнопке — вставить аккорд в позицию курсора.</p>
-      <p><b>Горячие клавиши:</b> цифры <kbd>1</kbd>…<kbd>9</kbd> вставляют соответствующие аккорды, <b>когда фокус в редакторе</b>. Работают в любой раскладке — можно писать русский текст и не переключаться на английский ради аккорда.</p>
+      <h3>Кнопки аккордов и хоткеи 1–9</h3>
+      <p>Введи аккорды песни через пробел в поле <b>«Аккорды песни»</b> и нажми <kbd>Enter</kbd> или ✔. Появятся кнопки.</p>
+      <p><b>Горячие клавиши:</b> цифры <kbd>1</kbd>…<kbd>9</kbd> вставляют соответствующие аккорды, когда фокус в редакторе. Работают в любой раскладке.</p>
 
-      <h3>💾 Экспорт</h3>
+      <h3>Работа с папкой песен</h3>
+      <p>Кнопка <b>📂 Выбрать папку</b> даёт приложению доступ к папке на диске. Все песни хранятся как обычные <code>.txt</code> файлы — их видно в проводнике, можно синхронизировать через облако, открыть в другом браузере (Chrome/Edge/Opera).</p>
+      <p>Браузер запомнит папку — при следующем запуске она откроется автоматически (иногда браузер спросит разрешение заново).</p>
+      <p><b>📋 Список песен</b> — открывает модалку со всеми файлами в папке.</p>
+      <p><b>➕ Новая</b> — создаёт пустой файл и сразу открывает его.</p>
+      <p><b>🔄</b> — обновить список (также обновляется автоматически при возврате на вкладку).</p>
+
+      <h3>Экспорт</h3>
       <ul>
-        <li><b>💾 .txt</b> — сохранить текст с пометками <code>[Am]</code> (для повторного открытия в редакторе).</li>
-        <li><b>📄 PDF</b> — готовый вид «аккорды над текстом», моноширинный шрифт, выравнивание сохраняется. Откроется диалог печати → выбери «Сохранить как PDF».</li>
-        <li><b>🖼 PNG</b> — то же самое, но картинкой (удобно отправить в мессенджер).</li>
-        <li><b>📝 Чистый текст</b> — без скобок, готовый вид копируется в буфер (для форумов, заметок).</li>
+        <li><b>.txt</b> — сохранить текст с пометками <code>[Am]</code>.</li>
+        <li><b>PDF</b> — вид «аккорды над текстом», моноширинный шрифт. Откроется диалог печати.</li>
+        <li><b>PNG</b> — то же самое картинкой.</li>
+        <li><b>Чистый текст</b> — без скобок, в буфер.</li>
       </ul>
 
-      <h3>🔥 Горячие клавиши</h3>
+      <h3>Горячие клавиши</h3>
       <ul>
-        <li><kbd>1</kbd>…<kbd>9</kbd> — вставить аккорд из списка (в редакторе)</li>
-        <li><kbd>Tab</kbd> — отступ (два пробела)</li>
-        <li><kbd>Ctrl</kbd>+<kbd>S</kbd> — сохранить .txt</li>
-        <li><kbd>Esc</kbd> — закрыть это окно</li>
+        <li><kbd>1</kbd>…<kbd>9</kbd> — вставить аккорд из списка</li>
+        <li><kbd>Ctrl</kbd>+<kbd>S</kbd> — сохранить (в файл, если папка выбрана; иначе .txt)</li>
+        <li><kbd>Tab</kbd> — отступ</li>
+        <li><kbd>Esc</kbd> — закрыть модалку</li>
       </ul>
 
-      <h3>💡 Мелочи</h3>
-      <ul>
-        <li>Текст и список аккордов сохраняются в браузере автоматически.</li>
-        <li>Хоткеи не срабатывают, когда фокус не в редакторе (например, в поле списка аккордов) — можно спокойно печатать цифры в названиях.</li>
-        <li>Список аккордов можно менять в любой момент — кнопки обновятся.</li>
-      </ul>
+      <h3>Ограничения</h3>
+      <p>Работа с папками работает в <b>Chrome, Edge, Opera</b>. В Firefox и Safari кнопка выбора папки не сработает — там приложение работает в обычном режиме, без папки.</p>
+      <p>Также нужен <b>локальный сервер</b> — открывать приложение по адресу <code>http://localhost:8000</code>, а не двойным кликом по файлу.</p>
 
     </div>
   </div>
 </div>
 
+<!-- ============ МОДАЛКА: СПИСОК ПЕСЕН ============ -->
+<div class="modal-backdrop" id="songListModal" onclick="if(event.target===this) closeModal('songListModal')">
+  <div class="modal wide" role="dialog">
+    <div class="modal-header">
+      <h2>📋 Песни в папке</h2>
+      <button class="modal-close" onclick="closeModal('songListModal')" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="folder-info" id="folderInfo"></div>
+      <div id="songsListContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ МОДАЛКА: НОВАЯ ПЕСНЯ ============ -->
+<div class="modal-backdrop" id="newSongModal" onclick="if(event.target===this) closeModal('newSongModal')">
+  <div class="modal" role="dialog">
+    <div class="modal-header">
+      <h2>➕ Новая песня</h2>
+      <button class="modal-close" onclick="closeModal('newSongModal')" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;color:var(--muted);font-size:13px;">Имя файла (без расширения). Файл будет создан как <code>.txt</code> в выбранной папке.</p>
+      <input type="text" class="new-song-input" id="newSongName" placeholder="Например: Кукушка — Кино" maxlength="120">
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+        <button onclick="closeModal('newSongModal')">Отмена</button>
+        <button class="primary" onclick="confirmNewSong()">Создать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// ============================================================
+// ГЛОБАЛЬНЫЕ
+// ============================================================
 const editor = document.getElementById('editor');
 const preview = document.getElementById('preview');
 const toast = document.getElementById('toast');
 const chordsInput = document.getElementById('chordsInput');
 const chordsButtons = document.getElementById('chordsButtons');
-const helpModal = document.getElementById('helpModal');
+const folderStatus = document.getElementById('folderStatus');
+const folderInfo = document.getElementById('folderInfo');
+const savedDot = document.getElementById('savedDot');
+const editorTitle = document.getElementById('editorTitle');
 
-// Названия секций для подсветки заголовков
 const SECTION_NAMES = ['Вступление','Интро','Куплет','Припев','Бридж','Проигрыш',
                        'Соло','Кода','Аутро','Финал','Предприпев','Пре-хорус'];
 const SECTION_HEADER_RE = new RegExp(
   '^\\s*(' + SECTION_NAMES.join('|') + ')\\s*:?\\s*$', 'i'
 );
 
-// ============ Утилиты ============
-function showToast(msg) {
+// Состояние файлового режима
+let dirHandle = null;         // FileSystemDirectoryHandle
+let currentFileHandle = null; // FileSystemFileHandle текущей песни
+let currentFileName = null;
+let songsCache = [];          // [{name, handle}]
+let isDirty = false;          // не сохранено
+let fsSupported = ('showDirectoryPicker' in window);
+
+// ============================================================
+// УТИЛИТЫ
+// ============================================================
+function showToast(msg, isError = false) {
   toast.textContent = msg;
+  toast.classList.toggle('error', isError);
   toast.classList.add('show');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
-// ============ Рендер превью ============
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Esc закрывает любую модалку
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+  }
+});
+
+// ============================================================
+// INDEXEDDB — для хранения хэндла папки
+// ============================================================
+const IDB_NAME = 'tabulatorium';
+const IDB_STORE = 'handles';
+const IDB_KEY = 'songsDir';
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbDelete(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ============================================================
+// ПРОВЕРКА ПОДДЕРЖКИ API
+// ============================================================
+function checkApiSupport() {
+  const btnPick = document.getElementById('btnPickFolder');
+  if (!fsSupported) {
+    btnPick.disabled = true;
+    btnPick.title = 'Браузер не поддерживает File System Access API (нужен Chrome/Edge/Opera)';
+    folderStatus.textContent = '📁 Браузер не умеет работать с папками';
+    folderStatus.classList.remove('active');
+  }
+}
+
+// ============================================================
+// ВЫБОР ПАПКИ
+// ============================================================
+async function pickFolder() {
+  if (!fsSupported) {
+    showToast('Браузер не поддерживает работу с папками', true);
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({
+      mode: 'readwrite',
+      id: 'tabulatoriumSongs',
+      startIn: 'documents',
+    });
+    dirHandle = handle;
+    await idbSet(IDB_KEY, handle);
+    await updateFolderUi();
+    await refreshSongList();
+    showToast('Папка выбрана: ' + handle.name);
+  } catch (e) {
+    if (e.name === 'AbortError') return; // пользователь отменил
+    console.error(e);
+    showToast('Не удалось открыть папку: ' + e.message, true);
+  }
+}
+
+async function updateFolderUi() {
+  if (!dirHandle) {
+    folderStatus.textContent = 'Папка не выбрана';
+    folderStatus.classList.remove('active');
+    document.getElementById('btnSongList').disabled = true;
+    document.getElementById('btnNewSong').disabled = true;
+    document.getElementById('btnRefresh').disabled = true;
+    return;
+  }
+  folderStatus.textContent = '' + dirHandle.name;
+  folderStatus.title = dirHandle.name;
+  folderStatus.classList.add('active');
+  document.getElementById('btnSongList').disabled = false;
+  document.getElementById('btnNewSong').disabled = false;
+  document.getElementById('btnRefresh').disabled = false;
+  folderInfo.textContent = 'Папка: ' + dirHandle.name;
+}
+
+// ============================================================
+// СПИСОК ПЕСЕН
+// ============================================================
+async function readSongsFromFolder() {
+  if (!dirHandle) return [];
+  const songs = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind === 'file' && /\.txt$/i.test(name)) {
+      songs.push({ name, handle });
+    }
+  }
+  songs.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  return songs;
+}
+
+async function refreshSongList() {
+  if (!dirHandle) return;
+  try {
+    songsCache = await readSongsFromFolder();
+    if (document.getElementById('songListModal').classList.contains('show')) {
+      renderSongListModal();
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось прочитать список песен', true);
+  }
+}
+
+function renderSongListModal() {
+  const container = document.getElementById('songsListContainer');
+  folderInfo.textContent = 'Папка: ' + (dirHandle ? dirHandle.name : '—');
+
+  if (!songsCache.length) {
+    container.innerHTML = '<div class="songs-empty">В папке нет .txt файлов. Создай первую песню кнопкой ➕.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'songs-list';
+
+  songsCache.forEach(song => {
+    const item = document.createElement('div');
+    item.className = 'song-item';
+    if (song.name === currentFileName) item.classList.add('current');
+
+    const icon = document.createElement('span');
+    icon.className = 'song-icon';
+    icon.textContent = song.name === currentFileName ? '▶' : '♪';
+
+    const name = document.createElement('span');
+    name.className = 'song-name';
+    name.textContent = song.name.replace(/\.txt$/i, '');
+
+    const actions = document.createElement('div');
+    actions.className = 'song-actions';
+
+    const btnRename = document.createElement('button');
+    btnRename.textContent = '✏️';
+    btnRename.title = 'Переименовать';
+    btnRename.onclick = (e) => { e.stopPropagation(); renameSong(song); };
+
+    const btnDelete = document.createElement('button');
+    btnDelete.textContent = '🗑';
+    btnDelete.title = 'Удалить';
+    btnDelete.onclick = (e) => { e.stopPropagation(); deleteSong(song); };
+
+    actions.appendChild(btnRename);
+    actions.appendChild(btnDelete);
+
+    item.appendChild(icon);
+    item.appendChild(name);
+    item.appendChild(actions);
+    item.onclick = () => openSong(song);
+
+    list.appendChild(item);
+  });
+
+  container.appendChild(list);
+}
+
+function openSongList() {
+  if (!dirHandle) {
+    showToast('Сначала выбери папку', true);
+    return;
+  }
+  refreshSongList().then(renderSongListModal);
+  openModal('songListModal');
+}
+
+// ============================================================
+// ОТКРЫТИЕ / СОХРАНЕНИЕ ПЕСНИ
+// ============================================================
+async function openSong(song) {
+  if (isDirty && !confirm('Текущая песня не сохранена. Открыть другую без сохранения?')) {
+    return;
+  }
+  try {
+    const file = await song.handle.getFile();
+    const text = await file.text();
+    editor.value = text;
+    currentFileHandle = song.handle;
+    currentFileName = song.name;
+    isDirty = false;
+    updateSavedIndicator();
+    updateEditorTitle();
+    refresh();
+    closeModal('songListModal');
+    showToast('Открыто: ' + song.name.replace(/\.txt$/i, ''));
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось открыть файл: ' + e.message, true);
+  }
+}
+
+async function saveCurrentSong() {
+  if (!currentFileHandle) return false;
+  try {
+    const writable = await currentFileHandle.createWritable();
+    await writable.write(editor.value);
+    await writable.close();
+    isDirty = false;
+    updateSavedIndicator();
+    showToast('Сохранено: ' + currentFileName.replace(/\.txt$/i, ''));
+    return true;
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось сохранить: ' + e.message, true);
+    return false;
+  }
+}
+
+function updateSavedIndicator() {
+  if (!currentFileHandle) {
+    savedDot.classList.remove('visible');
+    return;
+  }
+  savedDot.classList.add('visible');
+  savedDot.classList.toggle('dirty', isDirty);
+  savedDot.title = isDirty ? 'Не сохранено' : 'Сохранено';
+}
+
+function updateEditorTitle() {
+  if (currentFileName) {
+    editorTitle.textContent = '✏️ ' + currentFileName.replace(/\.txt$/i, '') + (isDirty ? ' ●' : '');
+  } else {
+    editorTitle.textContent = 'Редактор';
+  }
+}
+
+// ============================================================
+// НОВАЯ ПЕСНЯ
+// ============================================================
+function newSong() {
+  if (!dirHandle) {
+    showToast('Сначала выбери папку', true);
+    return;
+  }
+  document.getElementById('newSongName').value = '';
+  openModal('newSongModal');
+  setTimeout(() => document.getElementById('newSongName').focus(), 50);
+}
+
+async function confirmNewSong() {
+  const rawName = document.getElementById('newSongName').value.trim();
+  if (!rawName) {
+    showToast('Введи имя файла', true);
+    return;
+  }
+  const safeName = rawName.replace(/[\\/:*?"<>|]/g, '_');
+  const fileName = safeName.toLowerCase().endsWith('.txt') ? safeName : safeName + '.txt';
+
+  try {
+    const handle = await dirHandle.getFileHandle(fileName, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write('');
+    await writable.close();
+
+    currentFileHandle = handle;
+    currentFileName = fileName;
+    editor.value = '';
+    isDirty = false;
+    updateSavedIndicator();
+    updateEditorTitle();
+    refresh();
+    closeModal('newSongModal');
+    await refreshSongList();
+    showToast('Создано: ' + fileName.replace(/\.txt$/i, ''));
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось создать файл: ' + e.message, true);
+  }
+}
+
+// ============================================================
+// ПЕРЕИМЕНОВАНИЕ / УДАЛЕНИЕ
+// ============================================================
+async function renameSong(song) {
+  const oldName = song.name.replace(/\.txt$/i, '');
+  const newName = prompt('Новое имя файла:', oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+
+  const safe = newName.trim().replace(/[\\/:*?"<>|]/g, '_');
+  const newFile = safe.toLowerCase().endsWith('.txt') ? safe : safe + '.txt';
+
+  try {
+    // В File System Access API нет прямого переименования.
+    // Читаем старый, пишем новый, удаляем старый.
+    const oldFile = await song.handle.getFile();
+    const text = await oldFile.text();
+
+    const newHandle = await dirHandle.getFileHandle(newFile, { create: true });
+    const writable = await newHandle.createWritable();
+    await writable.write(text);
+    await writable.close();
+
+    await dirHandle.removeEntry(song.name);
+
+    if (currentFileName === song.name) {
+      currentFileName = newFile;
+      currentFileHandle = newHandle;
+      updateEditorTitle();
+    }
+
+    await refreshSongList();
+    renderSongListModal();
+    showToast('Переименовано: ' + newFile.replace(/\.txt$/i, ''));
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось переименовать: ' + e.message, true);
+  }
+}
+
+async function deleteSong(song) {
+  const name = song.name.replace(/\.txt$/i, '');
+  if (!confirm('Удалить песню «' + name + '»?\nФайл будет удалён с диска без возможности восстановления.')) return;
+  try {
+    await dirHandle.removeEntry(song.name);
+    if (currentFileName === song.name) {
+      currentFileName = null;
+      currentFileHandle = null;
+      updateEditorTitle();
+      updateSavedIndicator();
+    }
+    await refreshSongList();
+    renderSongListModal();
+    showToast('Удалено: ' + name);
+  } catch (e) {
+    console.error(e);
+    showToast('Не удалось удалить: ' + e.message, true);
+  }
+}
+
+// ============================================================
+// ВОССТАНОВЛЕНИЕ ПАПКИ ПРИ ЗАПУСКЕ
+// ============================================================
+async function restoreFolder() {
+  if (!fsSupported) return;
+  try {
+    const handle = await idbGet(IDB_KEY);
+    if (!handle) return;
+
+    // Проверяем/запрашиваем разрешение
+    const opts = { mode: 'readwrite' };
+    let perm = await handle.queryPermission(opts);
+    if (perm !== 'granted') {
+      perm = await handle.requestPermission(opts);
+    }
+    if (perm !== 'granted') {
+      folderStatus.textContent = '📁 Нет доступа к папке';
+      return;
+    }
+
+    dirHandle = handle;
+    await updateFolderUi();
+    await refreshSongList();
+  } catch (e) {
+    console.error('restoreFolder error:', e);
+  }
+}
+
+// ============================================================
+// АВТОПРОВЕРКА ПРИ ФОКУСЕ
+// ============================================================
+let focusRefreshTimer = null;
+function scheduleFocusRefresh() {
+  if (!dirHandle) return;
+  clearTimeout(focusRefreshTimer);
+  focusRefreshTimer = setTimeout(() => {
+    refreshSongList();
+  }, 500);
+}
+
+window.addEventListener('focus', scheduleFocusRefresh);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleFocusRefresh();
+});
+
+// ============================================================
+// РЕНДЕР ПРЕВЬЮ
+// ============================================================
 function renderLine(line) {
   const strippedOfChords = line.replace(/\[[^\]]+\]/g, '').trim();
   const isChordOnlyLine = strippedOfChords === '';
@@ -597,29 +1221,23 @@ function updatePreview() {
       html += '<span class="empty-line">\n</span>';
       continue;
     }
-
     if (SECTION_HEADER_RE.test(raw)) {
       html += `<span class="section-header">${escapeHtml(raw.replace(/:$/, ''))}</span>\n`;
       continue;
     }
-
     const { chordLine, textLine } = renderLine(raw);
-    const chords = (raw.match(/\[[^\]]+\]/g) || []).length;
-    chordTotal += chords;
-
-    if (chordLine.trim()) {
-      html += `<span class="chord-line">${escapeHtml(chordLine)}</span>\n`;
-    }
-    if (textLine.trim()) {
-      html += `<span class="text-line">${escapeHtml(textLine)}</span>\n`;
-    }
+    chordTotal += (raw.match(/\[[^\]]+\]/g) || []).length;
+    if (chordLine.trim()) html += `<span class="chord-line">${escapeHtml(chordLine)}</span>\n`;
+    if (textLine.trim()) html += `<span class="text-line">${escapeHtml(textLine)}</span>\n`;
   }
 
   preview.innerHTML = html;
   document.getElementById('chordCount').textContent = chordTotal;
 }
 
-// ============ Статистика ============
+// ============================================================
+// СТАТИСТИКА
+// ============================================================
 function updateStats() {
   const text = editor.value;
   const pos = editor.selectionStart;
@@ -631,7 +1249,9 @@ function updateStats() {
   document.getElementById('statCursor').textContent = `${line}:${col}`;
 }
 
-// ============ Вставка в редактор ============
+// ============================================================
+// ВСТАВКА В РЕДАКТОР
+// ============================================================
 function insertAtCursor(text) {
   const s = editor.selectionStart;
   const e = editor.selectionEnd;
@@ -640,16 +1260,13 @@ function insertAtCursor(text) {
   refresh();
 }
 
-function insertChord(chord) {
-  insertAtCursor(`[${chord}]`);
-}
+function insertChord(chord) { insertAtCursor(`[${chord}]`); }
 
 function insertSection(name) {
   const pos = editor.selectionStart;
   const lineStart = editor.value.lastIndexOf('\n', pos - 1) + 1;
   const insertion = `${name}:\n`;
-  editor.value =
-    editor.value.slice(0, lineStart) + insertion + editor.value.slice(lineStart);
+  editor.value = editor.value.slice(0, lineStart) + insertion + editor.value.slice(lineStart);
   const cursor = lineStart + insertion.length;
   editor.setSelectionRange(cursor, cursor);
   editor.focus();
@@ -657,23 +1274,20 @@ function insertSection(name) {
   showToast(`Секция «${name}» добавлена`);
 }
 
-// ============ Панель аккордов ============
+// ============================================================
+// ПАНЕЛЬ АККОРДОВ
+// ============================================================
 let chordList = [];
 
 function parseChordList(str) {
-  return str
-    .split(/[\s,]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
+  return str.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
 }
 
 function applyChords() {
   chordList = parseChordList(chordsInput.value);
   renderChordButtons();
-  saveChordsToStorage();
-  showToast(chordList.length
-    ? `Аккордов: ${chordList.length}`
-    : 'Список пуст');
+  safeSetItem('chordsList', chordsInput.value);
+  showToast(chordList.length ? `Аккордов: ${chordList.length}` : 'Список пуст');
 }
 
 function renderChordButtons() {
@@ -682,25 +1296,18 @@ function renderChordButtons() {
     const b = document.createElement('button');
     b.className = 'chord-btn';
     b.type = 'button';
-
     if (idx < 9) {
       const k = document.createElement('span');
       k.className = 'key';
       k.textContent = String(idx + 1);
       b.appendChild(k);
     }
-
     const label = document.createElement('span');
     label.textContent = chord;
     b.appendChild(label);
-
     b.onclick = () => insertChord(chord);
     chordsButtons.appendChild(b);
   });
-}
-
-function saveChordsToStorage() {
-  localStorage.setItem('chordsList', chordsInput.value);
 }
 
 function restoreChordsFromStorage() {
@@ -712,7 +1319,28 @@ function restoreChordsFromStorage() {
   }
 }
 
-// ============ Файлы ============
+// ============================================================
+// ХРАНИЛИЩЕ С ЗАЩИТОЙ ОТ ПЕРЕПОЛНЕНИЯ
+// ============================================================
+let storageBroken = false;
+let storageWarned = false;
+
+function safeSetItem(key, value) {
+  if (storageBroken) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    storageBroken = true;
+    if (!storageWarned) {
+      storageWarned = true;
+      showToast('⚠️ Автосохранение переполнено — сохрани файл вручную', true);
+    }
+  }
+}
+
+// ============================================================
+// ФАЙЛЫ (импорт/экспорт)
+// ============================================================
 function openFile() { document.getElementById('fileInput').click(); }
 
 document.getElementById('fileInput').addEventListener('change', e => {
@@ -721,6 +1349,11 @@ document.getElementById('fileInput').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = ev => {
     editor.value = ev.target.result;
+    currentFileHandle = null;
+    currentFileName = null;
+    isDirty = true;
+    updateEditorTitle();
+    updateSavedIndicator();
     refresh();
     showToast('Загружено: ' + file.name);
   };
@@ -732,7 +1365,7 @@ function saveAs(ext) {
   const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `chords-${Date.now()}.${ext}`;
+  a.download = currentFileName || `song-${Date.now()}.${ext}`;
   a.click();
   URL.revokeObjectURL(a.href);
   showToast('Сохранено как .' + ext);
@@ -752,32 +1385,15 @@ async function copyToClipboard() {
 function clearAll() {
   if (editor.value && !confirm('Очистить текст?')) return;
   editor.value = '';
+  isDirty = true;
+  updateEditorTitle();
+  updateSavedIndicator();
   refresh();
 }
 
-// ============ Хранилище с защитой от переполнения ============
-let storageBroken = false;   // если true — не пытаемся сохранять
-let storageWarned = false;   // чтобы тост показать только один раз
-
-function safeSetItem(key, value) {
-  if (storageBroken) return;
-  try {
-    localStorage.setItem(key, value);
-  } catch (e) {
-    // QuotaExceededError или другое — перестаём пытаться
-    storageBroken = true;
-    if (!storageWarned) {
-      storageWarned = true;
-      showToast('⚠️ Автосохранение переполнено — сохрани файл вручную');
-    }
-  }
-}
-
-function saveChordsToStorage() {
-  safeSetItem('chordsList', chordsInput.value);
-}
-
-// ============ Пример ============
+// ============================================================
+// ПРИМЕР
+// ============================================================
 function loadExample() {
   editor.value =
 `Вступление:
@@ -798,40 +1414,53 @@ function loadExample() {
 [Dm] [Am] [E] [Am]`;
   chordsInput.value = 'Am F C G Dm E';
   applyChords();
+  isDirty = true;
+  updateEditorTitle();
+  updateSavedIndicator();
   refresh();
   showToast('Пример загружен');
 }
 
-// ============ Общее обновление ============
+// ============================================================
+// ОБЩЕЕ ОБНОВЛЕНИЕ
+// ============================================================
 function refresh() {
   updatePreview();
   updateStats();
-  safeSetItem('chordsEditorText', editor.value);
+  // Текст в localStorage только если мы НЕ в файловом режиме
+  if (!currentFileHandle) {
+    safeSetItem('chordsEditorText', editor.value);
+  }
 }
 
-editor.addEventListener('input', refresh);
+editor.addEventListener('input', () => {
+  if (currentFileHandle && !isDirty) {
+    isDirty = true;
+    updateSavedIndicator();
+    updateEditorTitle();
+  }
+  refresh();
+});
 editor.addEventListener('click', updateStats);
 editor.addEventListener('keyup', updateStats);
 editor.addEventListener('select', updateStats);
 
-// ============ Горячие клавиши в редакторе ============
+// Горячие клавиши в редакторе
 editor.addEventListener('keydown', e => {
-  // Tab — отступ
   if (e.key === 'Tab') {
     e.preventDefault();
     insertAtCursor('  ');
     return;
   }
-
-  // Ctrl+S — сохранить
   if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
     e.preventDefault();
-    saveAs('txt');
+    if (currentFileHandle) {
+      saveCurrentSong();
+    } else {
+      saveAs('txt');
+    }
     return;
   }
-
-  // Цифры 1–9 — вставка аккорда по индексу.
-  // Используем e.code, чтобы не зависеть от раскладки (работает и в русской).
   const m = /^Digit([1-9])$/.exec(e.code);
   if (m && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const idx = parseInt(m[1], 10) - 1;
@@ -842,22 +1471,17 @@ editor.addEventListener('keydown', e => {
   }
 });
 
-// ============ Хелп ============
-function openHelp() {
-  helpModal.classList.add('show');
-}
-function closeHelp() {
-  helpModal.classList.remove('show');
-}
-
-// Esc закрывает модалку
+// Ctrl+S при фокусе не в редакторе
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && helpModal.classList.contains('show')) {
-    closeHelp();
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+    if (document.activeElement !== editor) {
+      e.preventDefault();
+      if (currentFileHandle) saveCurrentSong();
+      else saveAs('txt');
+    }
   }
 });
 
-// В поле аккордов Enter = применить
 chordsInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -865,30 +1489,41 @@ chordsInput.addEventListener('keydown', e => {
   }
 });
 
-// ============ Инициализация ============
-(function restore() {
+// ============================================================
+// ХЕЛП
+// ============================================================
+function openHelp() { openModal('helpModal'); }
+
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================================
+(async function init() {
+  checkApiSupport();
+  restoreChordsFromStorage();
+
+  // Восстанавливаем «черновик» из localStorage (только если файлового нет)
   const savedText = localStorage.getItem('chordsEditorText');
   if (savedText) editor.value = savedText;
-  restoreChordsFromStorage();
+
+  refresh();
+
+  // Пробуем восстановить папку
+  await restoreFolder();
 })();
-refresh();
 
 // ============================================================
-// ЭКСПОРТ
+// ЭКСПОРТ (PDF / PNG / Plain)
 // ============================================================
-
 function buildFinalText() {
   const lines = editor.value.split('\n');
   const out = [];
   for (const raw of lines) {
     if (raw.trim() === '') { out.push(''); continue; }
-
     if (SECTION_HEADER_RE.test(raw)) {
       out.push(raw.trim());
       out.push('');
       continue;
     }
-
     const { chordLine, textLine } = renderLine(raw);
     if (chordLine.trim()) out.push(chordLine.replace(/\s+$/, ''));
     if (textLine.trim()) out.push(textLine.replace(/\s+$/, ''));
@@ -896,10 +1531,8 @@ function buildFinalText() {
   return out.join('\n');
 }
 
-// ----- PDF -----
 function exportPDF() {
   const content = buildFinalText();
-
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -940,11 +1573,9 @@ function exportPDF() {
   showToast('Диалог печати → «Сохранить как PDF»');
 }
 
-// ----- PNG -----
 function exportPNG() {
   const content = buildFinalText();
   const lines = content.split('\n');
-
   const fontSize = 18;
   const lineHeight = 26;
   const padding = 24;
@@ -977,7 +1608,6 @@ function exportPNG() {
       chordRegex.test(line) &&
       next.trim() !== '' &&
       !chordRegex.test(next);
-
     ctx.fillStyle = isChordLine ? '#b03a5b' : '#111111';
     ctx.fillText(line, padding, y);
     y += lineHeight;
@@ -993,7 +1623,6 @@ function exportPNG() {
   }, 'image/png');
 }
 
-// ----- Чистый текст -----
 function exportPlainText() {
   const content = buildFinalText();
   navigator.clipboard.writeText(content)
