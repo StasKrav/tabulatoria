@@ -1506,14 +1506,39 @@ document.getElementById('fileInput').addEventListener('change', e => {
 
   const reader = new FileReader();
   reader.onload = ev => {
-    editor.value = ev.target.result;
-    currentFileHandle = null;          // ← read-only: писать некуда
+    const fileText = ev.target.result;
+    const draftText = loadDraft(file.name);
+
+    let textToUse = fileText;
+    let restoredFromDraft = false;
+
+    // Если есть черновик, отличающийся от файла — спрашиваем
+    if (draftText !== null && draftText !== fileText) {
+      const useDraft = confirm(
+        'Для этого файла есть несохранённый черновик.\n\n' +
+        'OK — восстановить черновик (файл на диске останется как есть)\n' +
+        'Отмена — открыть версию из файла (черновик будет удалён)'
+      );
+      if (useDraft) {
+        textToUse = draftText;
+        restoredFromDraft = true;
+      } else {
+        clearDraft(file.name);
+      }
+    }
+
+    editor.value = textToUse;
+    currentFileHandle = null;          // fallback: писать некуда
     currentFileName = file.name;
-    isDirty = true;
+    isDirty = true;                    // всё равно некуда сохранять — считаем «есть изменения»
+
     updateEditorTitle();
     updateSavedIndicator();
     refresh();
-    showToast('Загружено (только чтение): ' + file.name);
+
+    showToast(restoredFromDraft
+      ? 'Черновик восстановлен: ' + file.name
+      : 'Загружено (только чтение): ' + file.name);
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1657,8 +1682,9 @@ chordsInput.addEventListener('keydown', e => {
 const DRAFT_PREFIX = 'draft:';   // ключ: draft:<имя файла>
 
 function saveDraft() {
-  // Сохраняем черновик только если файл открыт И есть изменения
-  if (!currentFileHandle || !currentFileName || !isDirty) return;
+  // Ключ черновика — имя файла. Handle не обязателен:
+  // в fallback-режиме (Firefox/Safari) его нет, но черновик нужен.
+  if (!currentFileName || !isDirty) return;
   try {
     localStorage.setItem(DRAFT_PREFIX + currentFileName, editor.value);
   } catch (e) {
