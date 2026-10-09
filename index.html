@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аккорды над текстом</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #14161c;
+    --panel: #1c1f28;
+    --panel-2: #252932;
+    --border: #313640;
+    --text: #e6e8ee;
+    --muted: #8b91a0;
+    --accent: #7aa2f7;
+    --accent-2: #9ece6a;
+    --chord: #f7768e;
+    --danger: #f7768e;
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+
+  button:hover { background: var(--accent); color: #14161c; border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #14161c; font-weight: 600; }
+  button.danger:hover { background: var(--danger); border-color: var(--danger); color: white; }
+
+  button.icon {
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  .toolbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .toolbar label { color: var(--muted); display: flex; align-items: center; gap: 5px; }
+
+  .section-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--accent-2);
+    font-weight: 600;
+  }
+  .section-btn:hover { background: var(--accent-2); color: #14161c; border-color: var(--accent-2); }
+
+  /* -------- Панель аккордов -------- */
+  .chords-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chords-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chords-input-row label {
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  #chordsInput {
+    flex: 1;
+    min-width: 200px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: "JetBrains Mono", monospace;
+    outline: none;
+  }
+  #chordsInput:focus { border-color: var(--accent); }
+
+  #chordsInput::placeholder { color: var(--muted); font-family: inherit; }
+
+  .chords-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 30px;
+  }
+
+  .chords-buttons:empty::before {
+    content: 'Кнопки аккордов появятся здесь после того, как ты введёшь их список выше и нажмёшь ✔';
+    color: var(--muted);
+    font-size: 12px;
+    font-style: italic;
+    align-self: center;
+  }
+
+  .chord-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: "JetBrains Mono", monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.12s;
+  }
+
+  .chord-btn:hover { background: var(--chord); color: #14161c; border-color: var(--chord); }
+
+  .chord-btn .key {
+    background: var(--bg);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .chord-btn:hover .key { background: #14161c; color: #f7c4cf; }
+
+  /* -------- Основной контент -------- */
+  main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .pane-header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .pane-header b { color: var(--accent-2); font-weight: 600; }
+
+  #editor {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 16px;
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+  }
+
+  #editor::placeholder { color: var(--muted); }
+
+  .preview-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+  }
+
+  .preview-wrap pre {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre;
+    color: var(--text);
+  }
+
+  .preview-wrap .chord-line { color: var(--chord); font-weight: bold; }
+  .preview-wrap .text-line { color: var(--text); }
+
+  .preview-wrap .section-header {
+    color: var(--accent-2);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: block;
+    margin-top: 0.4em;
+  }
+
+  .preview-wrap .empty-line { height: 0.9em; display: block; }
+
+  .status {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .status b { color: var(--accent-2); }
+
+  .toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent-2);
+    color: #14161c;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* -------- Модалка хелпа -------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+  }
+
+  .modal-backdrop.show { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+  }
+  .modal-close:hover { background: var(--danger); color: white; }
+
+  .modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .modal-body h3 {
+    color: var(--accent-2);
+    font-size: 14px;
+    margin: 18px 0 8px 0;
+    font-weight: 600;
+  }
+  .modal-body h3:first-child { margin-top: 0; }
+
+  .modal-body p { margin-bottom: 10px; color: var(--text); }
+
+  .modal-body code {
+    background: var(--panel-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+  }
+
+  .modal-body kbd {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .modal-body pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    overflow-x: auto;
+    margin: 8px 0;
+    color: var(--accent-2);
+    line-height: 1.5;
+  }
+
+  .modal-body ul {
+    padding-left: 20px;
+    margin-bottom: 10px;
+  }
+
+  .modal-body li { margin-bottom: 4px; }
+
+  @media (max-width: 780px) {
+    main { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TABULATORIUM</h1>
+  <button class="icon" onclick="openHelp()" title="Справка">❓</button>
+  <button onclick="openFile()">Открыть</button>
+  <button onclick="saveAs('txt')">.txt</button>
+  <button onclick="exportPDF()">PDF</button>
+  <button onclick="exportPNG()">PNG</button>
+  <button onclick="exportPlainText()">Чистый текст</button>
+  <button onclick="copyToClipboard()">Копировать</button>
+  <button class="danger" onclick="clearAll()">Очистить</button>
+  <button onclick="loadExample()">Пример</button>
+  <input type="file" id="fileInput" hidden accept=".txt,.md">
+</header>
+
+<div class="toolbar">
+  <label>Секции:</label>
+  <button class="section-btn" onclick="insertSection('Вступление')">Вступление</button>
+  <button class="section-btn" onclick="insertSection('Куплет')">Куплет</button>
+  <button class="section-btn" onclick="insertSection('Припев')">Припев</button>
+  <button class="section-btn" onclick="insertSection('Бридж')">Бридж</button>
+  <button class="section-btn" onclick="insertSection('Проигрыш')">Проигрыш</button>
+  <button class="section-btn" onclick="insertSection('Соло')">Соло</button>
+  <button class="section-btn" onclick="insertSection('Кода')">Кода</button>
+</div>
+
+<div class="chords-bar">
+  <div class="chords-input-row">
+    <label>Аккорды песни:</label>
+    <input type="text" id="chordsInput" placeholder="Am C G F Dm E7 Am#7b5 — введи через пробел или запятую и нажми ✔" spellcheck="false" autocomplete="off">
+    <button class="primary" onclick="applyChords()" title="Применить список">✔</button>
+  </div>
+  <div class="chords-buttons" id="chordsButtons"></div>
+</div>
+
+<main>
+  <section class="pane">
+    <div class="pane-header">
+      <span>Редактор</span>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="Вступление:&#10;[Am] [Dm] [G] [C]&#10;&#10;Куплет:&#10;[Am]Я помню чудное [F]мгновенье&#10;[C]Передо мной явилась [G]ты"></textarea>
+  </section>
+
+  <section class="pane">
+    <div class="pane-header">
+      <span>Превью</span>
+      <span><b id="chordCount">0</b> аккордов</span>
+    </div>
+    <div class="preview-wrap">
+      <pre id="preview"></pre>
+    </div>
+  </section>
+</main>
+
+<div class="status">
+  <span>Строк: <b id="statLines">0</b></span>
+  <span>Символов: <b id="statChars">0</b></span>
+  <span>Курсор: <b id="statCursor">1:1</b></span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============ МОДАЛКА ХЕЛПА ============ -->
+<div class="modal-backdrop" id="helpModal" onclick="if(event.target===this) closeHelp()">
+  <div class="modal" role="dialog" aria-labelledby="helpTitle">
+    <div class="modal-header">
+      <h2 id="helpTitle">❓ Справка</h2>
+      <button class="modal-close" onclick="closeHelp()" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <h3>🎼 Как писать аккорды</h3>
+      <p>Аккорд в квадратных скобках ставится <b>перед слогом или словом</b>, на котором он играется. В превью он встанет над этим слогом.</p>
+      <pre>[Am]Я помню чудное [F]мгновенье
+[C]Передо мной явилась [G]ты</pre>
+      <p>Результат:</p>
+      <pre>Am            F
+Я помню чудное мгновенье
+C                G
+Передо мной явилась ты</pre>
+
+      <h3>🎸 Строка только из аккордов</h3>
+      <p>Если в строке нет текста, только аккорды — она отрисуется как чистая строка аккордов (для вступлений и проигрышей):</p>
+      <pre>[Am] [Dm] [G] [C]</pre>
+      <p>Результат: <code>Am Dm G C</code></p>
+
+      <h3>📑 Секции песни</h3>
+      <p>Кнопки <b>Вступление, Куплет, Припев, Бридж, Проигрыш, Соло, Кода</b> вставляют строку-заголовок над текущей позицией и переводят курсор на новую строку — можно сразу писать аккорды.</p>
+
+      <h3>⌨️ Кнопки аккордов и хоткеи 1–9</h3>
+      <p>Введи аккорды своей песни через пробел (или запятую) в поле <b>«Аккорды песни»</b> и нажми <kbd>Enter</kbd> или <b>✔</b>. Появятся кнопки.</p>
+      <p>Клик по кнопке — вставить аккорд в позицию курсора.</p>
+      <p><b>Горячие клавиши:</b> цифры <kbd>1</kbd>…<kbd>9</kbd> вставляют соответствующие аккорды, <b>когда фокус в редакторе</b>. Работают в любой раскладке — можно писать русский текст и не переключаться на английский ради аккорда.</p>
+
+      <h3>💾 Экспорт</h3>
+      <ul>
+        <li><b>💾 .txt</b> — сохранить текст с пометками <code>[Am]</code> (для повторного открытия в редакторе).</li>
+        <li><b>📄 PDF</b> — готовый вид «аккорды над текстом», моноширинный шрифт, выравнивание сохраняется. Откроется диалог печати → выбери «Сохранить как PDF».</li>
+        <li><b>🖼 PNG</b> — то же самое, но картинкой (удобно отправить в мессенджер).</li>
+        <li><b>📝 Чистый текст</b> — без скобок, готовый вид копируется в буфер (для форумов, заметок).</li>
+      </ul>
+
+      <h3>🔥 Горячие клавиши</h3>
+      <ul>
+        <li><kbd>1</kbd>…<kbd>9</kbd> — вставить аккорд из списка (в редакторе)</li>
+        <li><kbd>Tab</kbd> — отступ (два пробела)</li>
+        <li><kbd>Ctrl</kbd>+<kbd>S</kbd> — сохранить .txt</li>
+        <li><kbd>Esc</kbd> — закрыть это окно</li>
+      </ul>
+
+      <h3>💡 Мелочи</h3>
+      <ul>
+        <li>Текст и список аккордов сохраняются в браузере автоматически.</li>
+        <li>Хоткеи не срабатывают, когда фокус не в редакторе (например, в поле списка аккордов) — можно спокойно печатать цифры в названиях.</li>
+        <li>Список аккордов можно менять в любой момент — кнопки обновятся.</li>
+      </ul>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const toast = document.getElementById('toast');
+const chordsInput = document.getElementById('chordsInput');
+const chordsButtons = document.getElementById('chordsButtons');
+const helpModal = document.getElementById('helpModal');
+
+// Названия секций для подсветки заголовков
+const SECTION_NAMES = ['Вступление','Интро','Куплет','Припев','Бридж','Проигрыш',
+                       'Соло','Кода','Аутро','Финал','Предприпев','Пре-хорус'];
+const SECTION_HEADER_RE = new RegExp(
+  '^\\s*(' + SECTION_NAMES.join('|') + ')\\s*:?\\s*$', 'i'
+);
+
+// ============ Утилиты ============
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+// ============ Рендер превью ============
+function renderLine(line) {
+  const strippedOfChords = line.replace(/\[[^\]]+\]/g, '').trim();
+  const isChordOnlyLine = strippedOfChords === '';
+
+  if (isChordOnlyLine) {
+    const chords = [...line.matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
+    if (!chords.length) return { chordLine: '', textLine: '' };
+    return { chordLine: chords.join(' '), textLine: '' };
+  }
+
+  let chordLine = '';
+  let textLine = '';
+  let i = 0;
+  let visibleLen = 0;
+
+  while (i < line.length) {
+    if (line[i] === '[') {
+      const close = line.indexOf(']', i);
+      if (close !== -1) {
+        const chord = line.slice(i + 1, close);
+        while (chordLine.length < visibleLen) chordLine += ' ';
+        chordLine = chordLine.slice(0, visibleLen) + chord;
+        i = close + 1;
+        continue;
+      }
+    }
+    const ch = line[i];
+    while (chordLine.length < visibleLen) chordLine += ' ';
+    if (chordLine.length === visibleLen) chordLine += ' ';
+    textLine += ch;
+    visibleLen++;
+    i++;
+  }
+
+  const len = Math.max(chordLine.length, textLine.length);
+  chordLine = chordLine.padEnd(len, ' ');
+  textLine = textLine.padEnd(len, ' ');
+
+  return { chordLine, textLine };
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function updatePreview() {
+  const text = editor.value;
+  const lines = text.split('\n');
+  let html = '';
+  let chordTotal = 0;
+
+  for (const raw of lines) {
+    if (raw.trim() === '') {
+      html += '<span class="empty-line">\n</span>';
+      continue;
+    }
+
+    if (SECTION_HEADER_RE.test(raw)) {
+      html += `<span class="section-header">${escapeHtml(raw.replace(/:$/, ''))}</span>\n`;
+      continue;
+    }
+
+    const { chordLine, textLine } = renderLine(raw);
+    const chords = (raw.match(/\[[^\]]+\]/g) || []).length;
+    chordTotal += chords;
+
+    if (chordLine.trim()) {
+      html += `<span class="chord-line">${escapeHtml(chordLine)}</span>\n`;
+    }
+    if (textLine.trim()) {
+      html += `<span class="text-line">${escapeHtml(textLine)}</span>\n`;
+    }
+  }
+
+  preview.innerHTML = html;
+  document.getElementById('chordCount').textContent = chordTotal;
+}
+
+// ============ Статистика ============
+function updateStats() {
+  const text = editor.value;
+  const pos = editor.selectionStart;
+  const before = text.slice(0, pos);
+  const line = before.split('\n').length;
+  const col = pos - before.lastIndexOf('\n');
+  document.getElementById('statLines').textContent = text.split('\n').length;
+  document.getElementById('statChars').textContent = text.length;
+  document.getElementById('statCursor').textContent = `${line}:${col}`;
+}
+
+// ============ Вставка в редактор ============
+function insertAtCursor(text) {
+  const s = editor.selectionStart;
+  const e = editor.selectionEnd;
+  editor.setRangeText(text, s, e, 'end');
+  editor.focus();
+  refresh();
+}
+
+function insertChord(chord) {
+  insertAtCursor(`[${chord}]`);
+}
+
+function insertSection(name) {
+  const pos = editor.selectionStart;
+  const lineStart = editor.value.lastIndexOf('\n', pos - 1) + 1;
+  const insertion = `${name}:\n`;
+  editor.value =
+    editor.value.slice(0, lineStart) + insertion + editor.value.slice(lineStart);
+  const cursor = lineStart + insertion.length;
+  editor.setSelectionRange(cursor, cursor);
+  editor.focus();
+  refresh();
+  showToast(`Секция «${name}» добавлена`);
+}
+
+// ============ Панель аккордов ============
+let chordList = [];
+
+function parseChordList(str) {
+  return str
+    .split(/[\s,]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function applyChords() {
+  chordList = parseChordList(chordsInput.value);
+  renderChordButtons();
+  saveChordsToStorage();
+  showToast(chordList.length
+    ? `Аккордов: ${chordList.length}`
+    : 'Список пуст');
+}
+
+function renderChordButtons() {
+  chordsButtons.innerHTML = '';
+  chordList.forEach((chord, idx) => {
+    const b = document.createElement('button');
+    b.className = 'chord-btn';
+    b.type = 'button';
+
+    if (idx < 9) {
+      const k = document.createElement('span');
+      k.className = 'key';
+      k.textContent = String(idx + 1);
+      b.appendChild(k);
+    }
+
+    const label = document.createElement('span');
+    label.textContent = chord;
+    b.appendChild(label);
+
+    b.onclick = () => insertChord(chord);
+    chordsButtons.appendChild(b);
+  });
+}
+
+function saveChordsToStorage() {
+  localStorage.setItem('chordsList', chordsInput.value);
+}
+
+function restoreChordsFromStorage() {
+  const saved = localStorage.getItem('chordsList');
+  if (saved) {
+    chordsInput.value = saved;
+    chordList = parseChordList(saved);
+    renderChordButtons();
+  }
+}
+
+// ============ Файлы ============
+function openFile() { document.getElementById('fileInput').click(); }
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editor.value = ev.target.result;
+    refresh();
+    showToast('Загружено: ' + file.name);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function saveAs(ext) {
+  const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `chords-${Date.now()}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Сохранено как .' + ext);
+}
+
+async function copyToClipboard() {
+  try {
+    await navigator.clipboard.writeText(editor.value);
+    showToast('Скопировано в буфер');
+  } catch {
+    editor.select();
+    document.execCommand('copy');
+    showToast('Скопировано');
+  }
+}
+
+function clearAll() {
+  if (editor.value && !confirm('Очистить текст?')) return;
+  editor.value = '';
+  refresh();
+}
+
+// ============ Хранилище с защитой от переполнения ============
+let storageBroken = false;   // если true — не пытаемся сохранять
+let storageWarned = false;   // чтобы тост показать только один раз
+
+function safeSetItem(key, value) {
+  if (storageBroken) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    // QuotaExceededError или другое — перестаём пытаться
+    storageBroken = true;
+    if (!storageWarned) {
+      storageWarned = true;
+      showToast('⚠️ Автосохранение переполнено — сохрани файл вручную');
+    }
+  }
+}
+
+function saveChordsToStorage() {
+  safeSetItem('chordsList', chordsInput.value);
+}
+
+// ============ Пример ============
+function loadExample() {
+  editor.value =
+`Вступление:
+[Am] [Dm] [G] [C]
+
+Куплет:
+[Am]Как здорово, что [F]все мы здесь се[C]годня собра[G]лись
+[Am]Как здорово, что [F]все мы здесь се[C]годня собра[G]лись
+[F]Подумать только, [C]все мы здесь се[G]годня собра[Am]лись
+
+Припев:
+[Am]Я помню чудное мгно[F]венье
+[C]Передо мной явилась [G]ты
+[Am]Как мимолётное виде[F]нье
+[C]Как гений чистой красо[G]ты
+
+Проигрыш:
+[Dm] [Am] [E] [Am]`;
+  chordsInput.value = 'Am F C G Dm E';
+  applyChords();
+  refresh();
+  showToast('Пример загружен');
+}
+
+// ============ Общее обновление ============
+function refresh() {
+  updatePreview();
+  updateStats();
+  safeSetItem('chordsEditorText', editor.value);
+}
+
+editor.addEventListener('input', refresh);
+editor.addEventListener('click', updateStats);
+editor.addEventListener('keyup', updateStats);
+editor.addEventListener('select', updateStats);
+
+// ============ Горячие клавиши в редакторе ============
+editor.addEventListener('keydown', e => {
+  // Tab — отступ
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    insertAtCursor('  ');
+    return;
+  }
+
+  // Ctrl+S — сохранить
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+    e.preventDefault();
+    saveAs('txt');
+    return;
+  }
+
+  // Цифры 1–9 — вставка аккорда по индексу.
+  // Используем e.code, чтобы не зависеть от раскладки (работает и в русской).
+  const m = /^Digit([1-9])$/.exec(e.code);
+  if (m && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const idx = parseInt(m[1], 10) - 1;
+    if (idx < chordList.length) {
+      e.preventDefault();
+      insertChord(chordList[idx]);
+    }
+  }
+});
+
+// ============ Хелп ============
+function openHelp() {
+  helpModal.classList.add('show');
+}
+function closeHelp() {
+  helpModal.classList.remove('show');
+}
+
+// Esc закрывает модалку
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && helpModal.classList.contains('show')) {
+    closeHelp();
+  }
+});
+
+// В поле аккордов Enter = применить
+chordsInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    applyChords();
+  }
+});
+
+// ============ Инициализация ============
+(function restore() {
+  const savedText = localStorage.getItem('chordsEditorText');
+  if (savedText) editor.value = savedText;
+  restoreChordsFromStorage();
+})();
+refresh();
+
+// ============================================================
+// ЭКСПОРТ
+// ============================================================
+
+function buildFinalText() {
+  const lines = editor.value.split('\n');
+  const out = [];
+  for (const raw of lines) {
+    if (raw.trim() === '') { out.push(''); continue; }
+
+    if (SECTION_HEADER_RE.test(raw)) {
+      out.push(raw.trim());
+      out.push('');
+      continue;
+    }
+
+    const { chordLine, textLine } = renderLine(raw);
+    if (chordLine.trim()) out.push(chordLine.replace(/\s+$/, ''));
+    if (textLine.trim()) out.push(textLine.replace(/\s+$/, ''));
+  }
+  return out.join('\n');
+}
+
+// ----- PDF -----
+function exportPDF() {
+  const content = buildFinalText();
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Песня с аккордами</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  body {
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #000;
+    white-space: pre;
+    margin: 0;
+  }
+</style>
+</head>
+<body>${content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body>
+</html>`);
+  doc.close();
+
+  iframe.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  };
+  showToast('Диалог печати → «Сохранить как PDF»');
+}
+
+// ----- PNG -----
+function exportPNG() {
+  const content = buildFinalText();
+  const lines = content.split('\n');
+
+  const fontSize = 18;
+  const lineHeight = 26;
+  const padding = 24;
+  const font = `${fontSize}px "Courier New", Consolas, monospace`;
+
+  const measurer = document.createElement('canvas').getContext('2d');
+  measurer.font = font;
+  const maxWidth = Math.max(400, ...lines.map(l => measurer.measureText(l).width)) + padding * 2;
+  const height = lines.length * lineHeight + padding * 2;
+
+  const canvas = document.createElement('canvas');
+  const dpr = window.devicePixelRatio || 2;
+  canvas.width = maxWidth * dpr;
+  canvas.height = height * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, maxWidth, height);
+  ctx.font = font;
+  ctx.textBaseline = 'top';
+
+  const chordRegex = /^[\sA-Ha-h#b0-9\/\+\-()xX.]+$/;
+  let y = padding;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const next = lines[i + 1] || '';
+    const isChordLine =
+      line.trim() !== '' &&
+      chordRegex.test(line) &&
+      next.trim() !== '' &&
+      !chordRegex.test(next);
+
+    ctx.fillStyle = isChordLine ? '#b03a5b' : '#111111';
+    ctx.fillText(line, padding, y);
+    y += lineHeight;
+  }
+
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `song-${Date.now()}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('PNG сохранён');
+  }, 'image/png');
+}
+
+// ----- Чистый текст -----
+function exportPlainText() {
+  const content = buildFinalText();
+  navigator.clipboard.writeText(content)
+    .then(() => showToast('Чистый текст скопирован в буфер'))
+    .catch(() => {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `song-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Текст сохранён как .txt');
+    });
+}
+</script>
+</body>
+</html>
