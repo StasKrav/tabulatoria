@@ -546,44 +546,60 @@ document.addEventListener('visibilitychange', () => {
 // РЕНДЕР ПРЕВЬЮ
 // ============================================================
 function renderLine(line) {
-  const strippedOfChords = line.replace(/\[[^\]]+\]/g, '').trim()
-  const isChordOnlyLine = strippedOfChords === ''
+  const strippedOfChords = line.replace(/\[[^\]]+\]/g, '').trim();
+  const isChordOnlyLine = strippedOfChords === '';
 
+  // Ветка 1: строка только из аккордов — склеиваем через пробел
   if (isChordOnlyLine) {
-    const chords = [...line.matchAll(/\[([^\]]+)\]/g)].map(m => m[1])
-    if (!chords.length) return { chordLine: '', textLine: '' }
-    return { chordLine: chords.join(' '), textLine: '' }
+    const chords = [...line.matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
+    if (!chords.length) return { chordLine: '', textLine: '' };
+    return { chordLine: chords.join(' '), textLine: '' };
   }
 
-  let chordLine = ''
-  let textLine = ''
-  let i = 0
-  let visibleLen = 0
+  // Ветка 2: обычная строка с текстом и аккордами
+  let chordLine = '';       // строка аккордов (может опережать текст)
+  let textLine = '';        // строка текста
+  let i = 0;
+  let textLen = 0;          // позиция в тексте (для textLine)
+  let lastWasChord = false; // был ли предыдущий токен аккордом — для разделителя
 
   while (i < line.length) {
     if (line[i] === '[') {
-      const close = line.indexOf(']', i)
+      const close = line.indexOf(']', i);
       if (close !== -1) {
-        const chord = line.slice(i + 1, close)
-        while (chordLine.length < visibleLen) chordLine += ' '
-        chordLine = chordLine.slice(0, visibleLen) + chord
-        i = close + 1
-        continue
+        const chord = line.slice(i + 1, close);
+
+        // Достраиваем chordLine пробелами до текущей позиции текста
+        while (chordLine.length < textLen) chordLine += ' ';
+
+        // Если предыдущий токен был аккордом — добавляем пробел-разделитель
+        if (lastWasChord && chordLine.length > 0) {
+          chordLine += ' ';
+        }
+
+        // Дописываем аккорд в chordLine (он может «уехать» за textLen)
+        chordLine += chord;
+        lastWasChord = true;
+        i = close + 1;
+        continue;
       }
     }
-    const ch = line[i]
-    while (chordLine.length < visibleLen) chordLine += ' '
-    if (chordLine.length === visibleLen) chordLine += ' '
-    textLine += ch
-    visibleLen++
-    i++
+
+    // Обычный символ — идёт в текст
+    const ch = line[i];
+    textLine += ch;
+    textLen++;
+    lastWasChord = false;
+    i++;
   }
 
-  const len = Math.max(chordLine.length, textLine.length)
-  chordLine = chordLine.padEnd(len, ' ')
-  textLine = textLine.padEnd(len, ' ')
+  // Подгоняем длины: textLine должен быть не короче chordLine? Нет —
+  // textLine остаётся как есть, chordLine может быть длиннее.
+  const len = Math.max(chordLine.length, textLine.length);
+  chordLine = chordLine.padEnd(len, ' ');
+  textLine = textLine.padEnd(len, ' ');
 
-  return { chordLine, textLine }
+  return { chordLine, textLine };
 }
 
 function escapeHtml(s) {
