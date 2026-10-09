@@ -35,10 +35,6 @@
     display: none;
   }
 
-  .example-btn {
-  display: none;
-}
-
   /* -------- Вкладки -------- */
   .mobile-tabs {
     display: flex;

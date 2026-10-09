@@ -639,7 +639,7 @@ function updatePreview() {
       continue
     }
     if (SECTION_HEADER_RE.test(raw)) {
-      html += `<span class="section-header">${escapeHtml(raw.replace(/:$/, ''))}</span>\n`
+      html += `<span class="section-header">${escapeHtml(raw)}</span>\n`
       continue
     }
     const { chordLine, textLine } = renderLine(raw)
@@ -943,23 +943,15 @@ function clearAll() {
 // ПРИМЕР
 // ============================================================
 function loadExample() {
-  editor.value = `Вступление:
-[Am] [Dm] [G] [C]
+  editor.value = `
 
 Куплет:
-[Am]Как здорово, что [F]все мы здесь се[C]годня собра[G]лись
-[Am]Как здорово, что [F]все мы здесь се[C]годня собра[G]лись
-[F]Подумать только, [C]все мы здесь се[G]годня собра[Am]лись
-
-Припев:
-[Am]Я помню чудное мгно[F]венье
-[C]Передо мной явилась [G]ты
-[Am]Как мимолётное виде[F]нье
-[C]Как гений чистой красо[G]ты
-
-Проигрыш:
-[Dm] [Am] [E] [Am]`
-  chordsInput.value = 'Am F C G Dm E'
+[Bm]Водил меня Сер[G]ёга на [A]выставку Ван-[F#]Гога.  
+Там [Bm]было тёлок [G]много; и [A]нервы, как кан[F#]ат.  
+Но [Bm]я не недо[G]трога, да[A]ла понять с пор[F#]ога: 
+На [Bm]выставке Ван-[G]Гога, я - гл[A]авный экспон[F#7]ат! 
+`
+  chordsInput.value = 'Bm G A F# F#7'
   applyChords()
   isDirty = true
   updateEditorTitle()
@@ -1221,8 +1213,28 @@ function exportPDF() {
 }
 
 function exportPNG() {
-  const content = buildFinalText()
-  const lines = content.split('\n')
+  const rawLines = editor.value.split('\n')
+
+  // Разворачиваем в плоский список строк для отрисовки:
+  // заголовок секции, аккорды, текст — как в превью.
+  const drawLines = [] // { text, isChord }
+  for (const raw of rawLines) {
+    if (raw.trim() === '') {
+      drawLines.push({ text: '', isChord: false })
+      continue
+    }
+    if (SECTION_HEADER_RE.test(raw)) {
+      drawLines.push({ text: raw.trim(), isChord: false })
+      drawLines.push({ text: '', isChord: false })
+      continue
+    }
+    const { chordLine, textLine } = renderLine(raw)
+    if (chordLine.trim()) drawLines.push({ text: chordLine.replace(/\s+$/, ''), isChord: true })
+    if (textLine.trim())  drawLines.push({ text: textLine.replace(/\s+$/, ''),  isChord: false })
+  }
+
+  const lines = drawLines.map(l => l.text)
+
   const fontSize = 18
   const lineHeight = 26
   const padding = 24
@@ -1245,15 +1257,11 @@ function exportPNG() {
   ctx.font = font
   ctx.textBaseline = 'top'
 
-  const chordRegex = /^[\sA-Ha-h#b0-9\/\+\-()xX.]+$/
   let y = padding
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const next = lines[i + 1] || ''
-    const isChordLine =
-      line.trim() !== '' && chordRegex.test(line) && next.trim() !== '' && !chordRegex.test(next)
-    ctx.fillStyle = isChordLine ? '#b03a5b' : '#111111'
-    ctx.fillText(line, padding, y)
+  for (let i = 0; i < drawLines.length; i++) {
+    const { text, isChord } = drawLines[i]
+    ctx.fillStyle = isChord ? '#b03a5b' : '#111111'
+    ctx.fillText(text, padding, y)
     y += lineHeight
   }
 
